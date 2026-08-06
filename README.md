@@ -31,7 +31,7 @@
   👉 <strong><a href="https://surveyx.cn/">SurveyX 방문하기</a></strong> 👈
 </div>
 
-\[한국어 | [English](README_en.md) | [中文](README_zh.md)\]
+\[한국어 | [English](README_en.md)\]
 
 ## 🤔SurveyX란?
 
