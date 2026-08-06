@@ -4,7 +4,7 @@
 
 원본 저장소는 논문의 전체 시스템 중 **오프라인 처리 부분만** 공개한 축소판입니다. 따라서 재현 작업의 실질은 "코드를 새로 짜는 것"이 아니라 **공개되지 않은 데이터 수집 계층을 다시 만들고, 논문에 보고된 수치를 측정할 평가 수단을 갖추는 것**입니다.
 
-- 원본 프로젝트 소개 및 데모: [README_en.md](README_en.md) (upstream 원문 보존)
+- 원본 프로젝트 소개 및 데모: [IAAR-Shanghai/SurveyX README](https://github.com/IAAR-Shanghai/SurveyX/blob/main/README.md)
 - 예시 산출물: [`examples/`](examples/) 디렉터리
 
 ---
@@ -177,7 +177,9 @@ python tasks/workflow/06_gen_latex.py    --task_id $task_id
 
 **2단계 — 평가 수단 확보.** §4.1의 문헌 관련성 3종(IoU, Relevance_semantic, Relevance_LLM)을 구현. `eval/data/ref/`(기계 검색 결과)와 `eval/data/human/`(사람 작성 서베이)이 있으므로 IoU 계산 기반은 갖춰져 있습니다. **3단계보다 먼저 해야** 코퍼스 품질을 측정할 수 있습니다.
 
-**3단계 — 코퍼스 구축 (핵심 과제).** `DataFetcher`의 `search_on_arxiv(key_words) -> list[dict]`와 `search_on_google(...) -> list[dict]` 시그니처만 지키면 상위 `PaperRecaller`/`PaperFilter`는 수정 불필요. 반환 dict는 3절 스키마를 따르면 되고, 그중 `md_text`(전문)가 AttributeTree 입력이라 최종 품질을 좌우합니다. 논문의 사내 인프라 대신 arXiv API + Semantic Scholar/OpenAlex 조합이 현실적이며, 전문은 PDF → Markdown 변환 파이프라인이 별도로 필요합니다. `DEFAULT_PAPER_POOL_LIMIT=1024`가 논문의 임계값 θ=1000에 해당합니다.
+**3단계 — 코퍼스 구축 (핵심 과제).** `DataFetcher`의 `search_on_arxiv(key_words) -> list[dict]`와 `search_on_google(...) -> list[dict]` 시그니처만 지키면 상위 `PaperRecaller`/`PaperFilter`는 수정 불필요. 반환 dict는 3절 스키마를 따르면 되고, 그중 `md_text`(전문)가 AttributeTree 입력이라 최종 품질을 좌우합니다. 논문의 사내 인프라 대신 arXiv API + OpenAlex 조합이 현실적이며, 전문은 PDF → Markdown 변환 파이프라인이 별도로 필요합니다.
+
+> 📄 **상세 설계는 [REPRODUCTION.md](REPRODUCTION.md)에 별도로 정리했습니다** — 논문 인프라 역설계(Elasticsearch + MongoDB 크롤러 큐), 규모 재해석(263만 편이 필수가 아닌 이유), 전문 파싱을 필터 이후로 미루는 설계와 그에 필요한 코드 수정 지점, 기술 선택 비교, 실행 단계 C0~C5.
 
 **4단계 — 전체 재현 실험.** 논문 Table 4의 20개 토픽으로 서베이를 생성하고 Table 1(콘텐츠·인용 품질), Table 3(문헌 관련성)과 대조. Table 2의 ablation은 대부분 설정값으로 재현 가능합니다(`DEFAULT_ITERATION_LIMIT=0`으로 keyword expansion 제거, `get_attri` 결과 대신 `md_text` 직접 투입 등).
 
@@ -211,7 +213,6 @@ python tasks/workflow/06_gen_latex.py    --task_id $task_id
 ```
 
 - 원본 저장소: [IAAR-Shanghai/SurveyX](https://github.com/IAAR-Shanghai/SurveyX)
-- 원본 프로젝트 문서(영문): [README_en.md](README_en.md)
 - 논문 전문: [SurveyX.pdf](SurveyX.pdf)
 
 생성된 서베이는 연구 보조 결과물이며 학술 기준 준수를 보장하지 않습니다. 내용의 정확성은 반드시 직접 검증해야 합니다.
