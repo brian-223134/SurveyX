@@ -9,7 +9,7 @@ import fitz
 
 FILE_PATH = Path(__file__).absolute()
 BASE_DIR = FILE_PATH.parent.parent.parent.parent
-sys.path.insert(0, str(BASE_DIR))  # run code in any path
+sys.path.insert(0, str(BASE_DIR))  # 어느 경로에서 실행해도 동작하도록 설정
 
 from src.configs.constants import OUTPUT_DIR, RESOURCE_DIR
 from src.configs.logger import get_logger
@@ -28,7 +28,7 @@ class LatexGenerator:
         self.task_id = task_id
         self.outlines_path = Path(f"{OUTPUT_DIR}/{str(self.task_id)}/outlines.json")
 
-        # for text builder
+        # text builder용 설정
         self.init_text_tex_path = Path(f"{RESOURCE_DIR}/latex/survey.ini.tex")
         self.mainbody_tex_path = Path(
             f"{OUTPUT_DIR}/{str(self.task_id)}/tmp/mainbody_post_refined.tex"
@@ -41,27 +41,27 @@ class LatexGenerator:
             f"{OUTPUT_DIR}/{str(self.task_id)}/latex/survey.tex"
         )
 
-        # init builders
-        # -- text
+        # builder 초기화
+        # -- 텍스트
         self.text_builder = LatexTextBuilder(init_tex_path=self.init_text_tex_path)
 
     def add_watermark(self, input_pdf: Path, output_pdf: Path, watermark_pdf: Path):
-        # 打开输入的 PDF 和水印 PDF
+        # 입력 PDF와 워터마크 PDF 열기
         doc = fitz.open(input_pdf)
         watermark = fitz.open(watermark_pdf)
-        # 获取水印页面（假设水印文件只有一页）
+        # 워터마크 페이지 가져오기(워터마크 파일은 1페이지로 가정)
         watermark_page = watermark[0]
-        # 获取水印页面的 pixmap（即图像）
+        # 워터마크 페이지의 pixmap(이미지) 가져오기
         watermark_pixmap = watermark_page.get_pixmap()
-        # 将水印图像转换为字节流
+        # 워터마크 이미지를 바이트 스트림으로 변환
         img_stream = io.BytesIO(watermark_pixmap.tobytes())
         for page_num in range(len(doc)):
             page = doc.load_page(page_num)
-            # 获取当前页面的尺寸
+            # 현재 페이지 크기 가져오기
             page_rect = page.rect
-            # 将水印图像插入页面
+            # 워터마크 이미지를 페이지에 삽입
             page.insert_image(page_rect, stream=img_stream, overlay=False, alpha=0.3)
-        # 保存修改后的 PDF
+        # 수정된 PDF 저장
         doc.save(output_pdf)
 
     def compile_single_survey(self):
@@ -75,17 +75,17 @@ class LatexGenerator:
 
         os.chdir(task_dir)
         if task_dir.joinpath("survey.pdf").exists():
-            # 删除文件 output/survey.pdf
+            # output/survey.pdf 파일 삭제
             subprocess.run(f"rm survey.pdf", shell=True)
             subprocess.run(f"rm survey_wtmk.pdf", shell=True)
 
-        # 切换到 latex 目录
+        # latex 디렉터리로 이동
         os.chdir(latex_dir)
 
-        # prepare sty file
+        # sty 파일 준비
         subprocess.run(["cp", sty_file_path, "./neurips_2024.sty"])
 
-        # 执行 latexmk 命令，将输出重定向到 compile.log
+        # latexmk 명령 실행. 출력은 compile.log로 리다이렉트
         with open("compile.log", "w") as output_file:
             logger.debug(
                 f'Running "latexmk -pdf -interaction=nonstopmode -f survey.tex". The compile.log is at {latex_dir / "compile.log"}'
@@ -97,17 +97,17 @@ class LatexGenerator:
                 stderr=output_file,
             )
 
-        # 执行 latexmk -c 删除中间文件
+        # latexmk -c 를 실행해 중간 파일 삭제
         with open("compile.log", "a") as output_file:
             logger.debug(f'Running "latexmk -c"')
             subprocess.run("latexmk -c", shell=True, stdout=output_file)
 
-        # 删除所有 .bbl 文件
+        # 모든 .bbl 파일 삭제
         subprocess.run("rm *.bbl", shell=True)
 
         subprocess.run("rm neurips_2024.sty", shell=True)
 
-        # 将生成的 survey.pdf 移动到上一级目录
+        # 생성된 survey.pdf를 상위 디렉터리로 이동
         subprocess.run("mv survey.pdf ../", shell=True)
         self.add_watermark(
             task_dir / "survey.pdf", task_dir / "survey_wtmk.pdf", water_mark_pdf_path
@@ -116,7 +116,7 @@ class LatexGenerator:
         time_monitor.end("compile latex")
 
     def generate_full_survey(self):
-        # make survey.tex
+        # survey.tex 생성
         tex_content = self.text_builder.run(
             outlines_path=self.outlines_path,
             abstract_path=self.abstract_path,

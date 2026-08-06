@@ -30,18 +30,18 @@ class DataFetcher:
     SEND_TASK_API_URL = CRAWLER_GOOGLE_SCHOLAR_SEND_TASK_URL
     ARXIV_DB_URL = CRAWLER_GOOGLE_SCHOLAR_SEND_TASK_URL
     BATCH_SIZE = 200
-    CRAWLING_TIMEOUT = 300  # Maximum allowed crawling time in seconds. Set to 5 mins
-    SINGLE_WORD_LIMIT = 1000  # Maximum papers on single key word searched in arxiv
+    CRAWLING_TIMEOUT = 300  # 크롤링 최대 허용 시간(초). 5분으로 설정
+    SINGLE_WORD_LIMIT = 1000  # arXiv에서 키워드 하나로 검색할 최대 논문 수
     OLD_AUTHEN_PATH = Path(OUTPUT_DIR) / "tmp" / "db_authen.txt"
 
     def __init__(self, enable_cache: bool = DEFAULT_DATA_FETCHER_ENABLE_CACHE):
         self.authen: str = self._get_db_authentication()
-        self.search_id_list: list = []  # used for storing all search_id.
+        self.search_id_list: list = []  # 모든 search_id를 저장하는 데 사용
         self.enable_cache = enable_cache
         self.arxiv_request_token = ""
 
     def __try_authentication(self, authentication: str) -> bool:
-        # Check if an authentication can be accepted.
+        # 인증 정보가 유효한지 확인한다.
         pass
 
     def load_old_authen(self) -> str:
@@ -54,10 +54,10 @@ class DataFetcher:
         pass
 
     def task_submit(self, key_words: str, page: str, time_s: str, time_e: str) -> str:
-        """submit single task, return the search_id.
+        """단일 작업을 제출하고 search_id를 반환한다.
 
         Returns:
-            int: The search ID of the submitted task.
+            int: 제출한 작업의 search ID.
         """
         search_id = int(time.time() * 1000)
         url = f""
@@ -89,7 +89,7 @@ class DataFetcher:
             logger.error(f"Failed to submit task: {e}")
             raise
 
-        # Save search_id and key_words to config
+        # search_id와 key_words를 설정에 저장
         logger.info(f"Search id: {search_id}")
         self.search_id_list.append(search_id)
 
@@ -119,7 +119,7 @@ class DataFetcher:
         return status, final_succ_count, final_fail_count, meta_count
 
     def _get_data(self, collection: str, filter: str, projection: str = "") -> list:
-        """Retrieve data from the database."""
+        """데이터베이스에서 데이터를 가져온다."""
         logger.debug(f"collect data from {collection}.")
         url = f"{self.BASE_API_URL}:9876/api/dq/select"
         payload = {
@@ -128,7 +128,7 @@ class DataFetcher:
             "sort": "_id",
             "filter": json.dumps(filter),
             "projection": projection,
-            "sortType": 1,  # 1 or -1
+            "sortType": 1,  # 1 또는 -1
             "limit": str(self.BATCH_SIZE),
         }
         headers = {
@@ -152,7 +152,7 @@ class DataFetcher:
         projection: str = "",
         last_id: str = "00000000000000000000000000000000",
     ) -> list[dict]:
-        """Retrieve data from the arxiv database."""
+        """arXiv 데이터베이스에서 데이터를 가져온다."""
         url = f"{self.ARXIV_DB_URL}:9876/api/search_arxiv"
         payload = json.dumps(
             {
@@ -212,7 +212,7 @@ class DataFetcher:
                 [(data_src, {"kw_to_ids": {}}) for data_src in AVAILABLE_DATA_SOURCES]
             )
 
-        # ________1. Try to use cache. ________
+        # ________1. 캐시 사용 시도 ________
         if self.enable_cache and (
             key_words in cache_dict["google_scholar"]["kw_to_ids"]
         ):
@@ -230,7 +230,7 @@ class DataFetcher:
                 )
                 return papers
 
-        # ________2. Try to retrieve online. ________
+        # ________2. 온라인 검색 시도 ________
         cache_dict["google_scholar"]["kw_to_ids"][key_words] = []
         search_id = self.task_submit(key_words, page, time_s, time_e)
 
@@ -278,7 +278,7 @@ class DataFetcher:
             f"google_scholar: Retrieved {len(papers)} papers whose key_word is {key_words}"
         )
 
-        if self.enable_cache:  # update cache
+        if self.enable_cache:  # 캐시 갱신
             for paper in papers:
                 file_id = paper["_id"]
                 if "title" not in paper:
@@ -305,8 +305,8 @@ class DataFetcher:
         return papers
 
     def search_on_arxiv(self, key_words: str) -> list[dict]:
-        """Splite key words to individual part, and return search results with an overlap of 2 or more."""
-        key_words = key_words.split(",")  # keywords is splited by comma
+        """키워드를 개별 단어로 분리해 검색하고, 2회 이상 겹치는 결과를 반환한다."""
+        key_words = key_words.split(",")  # 키워드는 쉼표로 구분된다
         id_counter = Counter()
         id2paper = {}
 
@@ -328,13 +328,14 @@ class DataFetcher:
     def search_on_arxiv_single_word(
         self, key_word: str, projection=ARXIV_PROJECTION
     ) -> list[dict]:
-        """Retrieve all papers from the arXiv database where the title or abstract contains the specified keyword. Essentially this function returns papers where `key_word` appears as a substring within the title or abstract.
+        """arXiv 데이터베이스에서 제목 또는 초록에 지정한 키워드가 포함된 모든 논문을 가져온다.
+        본질적으로 `key_word`가 제목이나 초록의 부분 문자열로 등장하는 논문을 반환한다.
 
         Args:
-            key_words (str): a substring might appear in a paper's abstract and title.
+            key_words (str): 논문의 초록과 제목에 등장할 수 있는 부분 문자열.
 
         Returns:
-            list[dict]: The dict contains keys "_id, title, authors, detail_url, abstract, reference"
+            list[dict]: "_id, title, authors, detail_url, abstract, reference" 키를 담은 딕셔너리 리스트.
         """
         dataset_dir = Path(f"{DATASET_DIR}/raw")
         paper_store_dir = dataset_dir / "papers"

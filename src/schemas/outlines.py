@@ -11,12 +11,12 @@ logger = get_logger("Outlines")
 
 class SingleOutline:
     def __init__(self, title: str, desc: str, sub: list = []) -> None:
-        """Construct single outline
+        """단일 outline을 생성한다.
 
         Args:
-            title (str): the title of this outline
-            desc (str): the description, also what to write in this outline
-            sub (list): point to the subsections
+            title (str): 이 outline의 제목
+            desc (str): 설명. 이 outline에 무엇을 쓸지에 해당한다
+            sub (list): 하위 subsection들을 가리킨다
         """
         self.title: str = title
         self.desc: str = desc
@@ -24,19 +24,19 @@ class SingleOutline:
 
     @staticmethod
     def construct_secondary_outline_from_dict(dic: dict) -> None:
-        """construct a secondary outline
+        """2차(subsection) outline을 생성한다.
 
         Args:
-            dic (dict): a dict which contains the keys "subsection title" and "description"
+            dic (dict): "subsection title"과 "description" 키를 가진 딕셔너리
         """
         return SingleOutline(dic["subsection title"], dic["description"])
 
     @staticmethod
     def construct_primary_outline_from_dict(dic: dict) -> None:
-        """constrcut a primary outline, which contains several secondary outlines
+        """여러 2차 outline을 포함하는 1차(section) outline을 생성한다.
 
         Args:
-            dic (dict): a dict which contains the key "section title", "description" and "subsections"
+            dic (dict): "section title", "description", "subsections" 키를 가진 딕셔너리
         """
         dic.setdefault("subsections", [])
         sub = [
@@ -50,16 +50,16 @@ class SingleOutline:
 
 
 class Outlines:
-    """The outline architecture of the survey."""
+    """survey의 outline 구조."""
 
     def __init__(self, title: str, sections: list[SingleOutline]) -> None:
-        """Construct the Outlines."""
+        """Outlines를 생성한다."""
         self.title: str = title
         self.sections: list[SingleOutline] = sections
 
     @staticmethod
     def from_saved(file_path: str) -> "Outlines":
-        """load from saved json files, that always is a dict, containing "title" and "sections" keys."""
+        """저장된 JSON 파일에서 불러온다. 항상 "title"과 "sections" 키를 가진 딕셔너리다."""
         dic = json.loads(load_file_as_string(file_path))
         title = dic["title"]
         sections = []
@@ -70,10 +70,10 @@ class Outlines:
 
     @staticmethod
     def from_dict(dic: dict):
-        """Construct from a dict.
+        """딕셔너리로부터 생성한다.
 
         Args:
-            dic (dict): a dict contains "title" and "sections" keys.
+            dic (dict): "title"과 "sections" 키를 가진 딕셔너리.
 
         Returns:
             Outlines
@@ -85,13 +85,13 @@ class Outlines:
         return Outlines(title, sections)
 
     def save_to_file(self, file_path: Path):
-        """Save the Outlines instance to a JSON file."""
-        dic = self.to_dict()  # Convert the Outlines instance to a dictionary
+        """Outlines 인스턴스를 JSON 파일로 저장한다."""
+        dic = self.to_dict()  # Outlines 인스턴스를 딕셔너리로 변환
         save_result(json.dumps(dic, indent=4), file_path)
         logger.debug(f"Outlines saved to {file_path}")
 
     def to_dict(self) -> dict:
-        """Return as dict."""
+        """딕셔너리 형태로 반환한다."""
 
         dic = {"title": self.title, "sections": []}
         for section in self.sections:
@@ -111,10 +111,10 @@ class Outlines:
         return dic
 
     def __str__(self) -> str:
-        """print the Outlines
+        """Outlines를 문자열로 출력한다.
 
         Returns:
-            str: print each section and subsection info
+            str: 각 section과 subsection 정보를 담은 문자열
         """
         res = [self.title]
         for i, sec in enumerate(self.sections):
@@ -124,14 +124,14 @@ class Outlines:
         return "\n".join(res)
 
     def serial_no_to_single_outline(self, serial_no_raw: str) -> SingleOutline | None:
-        """Given a serial no in a survey, map to the single outline.
-        Tings like given "1.1", map to "1.1 xxx, xxxx"
+        """survey 내 일련번호를 대응하는 single outline으로 매핑한다.
+        예를 들어 "1.1"을 주면 "1.1 xxx, xxxx"에 해당하는 outline을 반환한다.
 
         Args:
-            serial_no (str): shaped like "1.1", "2.1" or "5"
+            serial_no (str): "1.1", "2.1", "5" 같은 형태
 
         Returns:
-            SingleOutline: corresponding single outline.
+            SingleOutline: 대응하는 single outline.
         """
         try:
             if "." in serial_no_raw:

@@ -14,7 +14,7 @@ from tqdm import tqdm
 
 FILE_PATH = Path(__file__).absolute()
 BASE_DIR = FILE_PATH.parent.parent.parent.parent
-sys.path.insert(0, str(BASE_DIR))  # run code in any path
+sys.path.insert(0, str(BASE_DIR))  # 어느 경로에서 실행해도 동작하도록 설정
 
 from src.configs.config import ADVANCED_CHATAGENT_MODEL, BASE_DIR, CHAT_AGENT_WORKERS
 from src.configs.constants import OUTPUT_DIR
@@ -55,9 +55,9 @@ class ContentGenerator(Base):
     def mount_trees_on_outlines(
         self, trees_path: Path, outlines: Outlines, chat: ChatAgent
     ):
-        """Mout each trees to several outlines. Save mount results to paper "mount_outline" field."""
+        """각 attribute tree를 여러 outline에 매핑(mount)한다. 매핑 결과는 논문의 "mount_outline" 필드에 저장한다."""
 
-        # read papers
+        # 논문 읽기
         papers = []
         for file in os.listdir(trees_path):
             if not file.endswith(".json"):
@@ -68,7 +68,7 @@ class ContentGenerator(Base):
                 continue
             paper_dic["path"] = str(paper_path)
             papers.append(paper_dic)
-        # prepare prompts
+        # 프롬프트 준비
         prompts_and_index = []
         for i, paper in enumerate(papers):
             prompt = load_prompt(
@@ -77,7 +77,7 @@ class ContentGenerator(Base):
                 paper=json.dumps(paper["attri"], indent=4),
             )
             prompts_and_index.append([prompt, i])
-        # chat to mount
+        # LLM 호출로 매핑 수행
         retry = 0
         mount_l = [None] * len(papers)
         while prompts_and_index and retry < 3:
@@ -96,13 +96,13 @@ class ContentGenerator(Base):
 
             retry += 1
             prompts_and_index = prompts_and_index_copy
-        # deal chat response
+        # LLM 응답 처리
         for mount, paper in zip(mount_l, papers):
             paper["mount_outline"] = mount
             save_result(json.dumps(paper, indent=4), paper["path"])
 
     def draw_mount_details(self, paper_dir: Path, fig_path: Path) -> None:
-        """Draw mount details."""
+        """매핑 상세 결과를 그래프로 그린다."""
         section_number_counter = Counter()
         for file in os.listdir(paper_dir):
             paper_path = paper_dir / file
@@ -128,8 +128,8 @@ class ContentGenerator(Base):
         plt.savefig(fig_path)
 
     def map_section_to_papers(self, outlines: Outlines, paper_dir: Path) -> dict:
-        """Map single outline to a list [keyinfo1, keyinfo2, ...]"""
-        sec2info = {  # 用来储存每个section的hint
+        """각 outline을 [keyinfo1, keyinfo2, ...] 리스트에 매핑한다."""
+        sec2info = {  # 각 section의 hint를 저장하는 딕셔너리
             subsection.title: []
             for section in outlines.sections
             for subsection in [section] + section.sub
@@ -155,16 +155,16 @@ class ContentGenerator(Base):
             except Exception as e:
                 tb_str = traceback.format_exc()
                 logger.error(f"An error occurred: {e}; The traceback: {tb_str}")
-        return sec2info  # sec2info 是一个字典，键为所有outline的title，值为列表，列表中的每个元素是一个hint
+        return sec2info  # sec2info는 키가 모든 outline의 title이고 값이 hint 리스트인 딕셔너리
 
     def contains_markdown(
         self, text: str
-    ):  # check if a text string contains markdown element.
+    ):  # 텍스트에 markdown 요소가 포함되어 있는지 확인
         markdown_patterns = [
-            r"(^|\n)#{1,6} ",  # 标题 (#, ## 等)
-            r"(\*\*.*?\*\*|\*.*?\*)",  # 粗体和斜体 (*text* 或 **text**)
-            r"(^|\n)[\-\+\*] ",  # 无序列表 (-, +, *)
-            r"(^|\n)\d+\.",  # 有序列表 (1. , 2. , etc.)
+            r"(^|\n)#{1,6} ",  # 제목 (#, ## 등)
+            r"(\*\*.*?\*\*|\*.*?\*)",  # 굵게/기울임 (*text* 또는 **text**)
+            r"(^|\n)[\-\+\*] ",  # 순서 없는 목록 (-, +, *)
+            r"(^|\n)\d+\.",  # 순서 있는 목록 (1. , 2. , 등)
         ]
         return any(re.search(pattern, text) for pattern in markdown_patterns)
 
@@ -202,7 +202,7 @@ class ContentGenerator(Base):
             #     "No <section_words> found in the section. No worry, this output is expected, because several sections are not supposed to generate section words.")
             return section
 
-        # chat to generate
+        # LLM 호출로 생성
         prompt = load_prompt(
             Path(BASE_DIR)
             / "resources"
@@ -223,24 +223,24 @@ class ContentGenerator(Base):
             logger.error(f"Prompt: {prompt}")
             raise Exception("Failed to get answer from the chat agent")
 
-        # replace the <section_words> with the generated content
+        # <section_words>를 생성된 내용으로 치환
         section = section.replace("<section_words>", ans)
         return section
 
     def gen_section_words(self, mainbody: str, chat: ChatAgent) -> str:
-        # split the mainbody into sections
+        # 본문을 section 단위로 분리
         sections = re.split(r"(?=\\section\{)", mainbody.strip())
         sections = [
             section.strip() for section in sections if section.startswith("\\section{")
         ]
-        # add <section_words> to several sections
+        # 일부 section에 <section_words> 자리표시자 추가
         add_insert_code = lambda section: re.sub(
             r"(\\section\{[^}]*\})",
             lambda x: f"{x.group(1)}\n<section_words>\n",
             section,
         )
         sections[2:-1] = [add_insert_code(section) for section in sections[2:-1]]
-        # generate section words
+        # section 도입 문단 생성
         logger.info("Start to generate section words.")
         pbar = tqdm(total=len(sections), desc="generating section words...")
         with ThreadPoolExecutor(max_workers=CHAT_AGENT_WORKERS) as executor:
@@ -270,9 +270,9 @@ class ContentGenerator(Base):
             position=0,
         )
         written_content = (
-            f"\\title{{{outlines.title}}}\n"  # 记录已生成内容，只用来生成prompt
+            f"\\title{{{outlines.title}}}\n"  # 지금까지 생성된 내용 기록. 프롬프트 생성에만 사용
         )
-        mainbody = []  # 记录已生成的内容，用来保存到文件
+        mainbody = []  # 지금까지 생성된 내용 기록. 파일 저장에 사용
 
         for i, section in enumerate(outlines.sections):
             out1_title = section.title
@@ -317,9 +317,9 @@ class ContentGenerator(Base):
 
         tqdm_bar.close()
         mainbody = "\n\n".join(mainbody)
-        # start to generate section words.
+        # section 도입 문단 생성 시작
         mainbody = self.gen_section_words(mainbody, chat)
-        # save result
+        # 결과 저장
         save_result(mainbody, mainbody_save_path)
         logger.info("content fulfill done.")
 
@@ -338,7 +338,7 @@ class ContentGenerator(Base):
             ),
             desc="writing content...",
         )
-        written_content = f"\\title{{{outlines.title}}}\n"  # 记录已生成内容，生成prompt
+        written_content = f"\\title{{{outlines.title}}}\n"  # 지금까지 생성된 내용 기록. 프롬프트 생성에 사용
         mainbody = []
 
         for i, section in enumerate(outlines.sections):
@@ -397,8 +397,8 @@ class ContentGenerator(Base):
     def post_revise(
         self, main_body_raw_path: Path, main_body_save_path: Path, papers_dir: Path
     ):
-        """Remove paragraph start with "in essence", "in summary", "in conclusion".
-        Remove the illegal citation.
+        """본문에서 "in essence", "in summary", "in conclusion"으로 시작하는 문단을 제거한다.
+        또한 유효하지 않은 인용(citation)도 제거한다.
         """
         extract_braced_content = lambda s: (
             m.group(1) if (m := re.search(r"\{(.*?)\}", s)) else None
@@ -411,17 +411,17 @@ class ContentGenerator(Base):
         ]
         main_body = []
         for line in main_body_raw.splitlines(keepends=True):
-            # remove paragraphs with "in essence" ...
+            # "in essence" 등으로 시작하는 문단 제거
             if any(e in line.lower() for e in filter):
                 continue
 
-            # remove illegal citation
+            # 유효하지 않은 인용 제거
             citations = re.findall(r"\\cite\{(.*?)\}", line)
             for citation in citations:
                 if citation not in legal_cite:
                     line = line.replace(f"\\cite{{{citation}}}", "")
 
-            # add "\label{}" to each section and subsection.
+            # 각 section과 subsection에 "\label{}" 추가
             if r"\section" in line:
                 section_name = extract_braced_content(line)
                 line = line.strip() + f" \\label{{sec:{section_name}}}\n"
@@ -444,7 +444,7 @@ class ContentGenerator(Base):
         time_monitor = TimeMonitor(self.task_id)
         time_monitor.start("generate content")
 
-        # _____ 1. Mount trees on outlines ______________
+        # _____ 1. attribute tree를 outline에 매핑 ______________
         outlines = Outlines.from_saved(self.outlines_path)
         self.mount_trees_on_outlines(self.paper_dir, outlines, chat_agent)
 
@@ -452,22 +452,22 @@ class ContentGenerator(Base):
         if not tmp_dir.exists():
             tmp_dir.mkdir(exist_ok=True, parents=True)
 
-        # _____ 2. Overview the mount details ___________
+        # _____ 2. 매핑 결과 개요 확인 ___________
         mount_detail_fig_path = tmp_dir / "mount_details.jpg"
         self.draw_mount_details(self.paper_dir, mount_detail_fig_path)
 
-        # _____ 3. Content fulfill _______________________
+        # _____ 3. 본문 내용 작성 _______________________
         main_body_raw_path = tmp_dir / "mainbody.raw.tex"
         self.content_fulfill_iter(
             self.paper_dir, outlines, chat_agent, main_body_raw_path
         )
         # self.content_fulfill(paper_dir, outlines, chat, main_body_raw_path)
 
-        # _____ 4. Generate abstract _____________________
+        # _____ 4. 초록 생성 _____________________
         abstract_save_path = tmp_dir / "abstract.tex"
         self.gen_abstract(main_body_raw_path, abstract_save_path, chat_agent)
 
-        # _____ 5. Post revise ___________________________
+        # _____ 5. 사후 교정 ___________________________
         main_body_save_path = tmp_dir / "mainbody.tex"
         self.post_revise(main_body_raw_path, main_body_save_path, self.paper_dir)
 

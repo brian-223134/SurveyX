@@ -7,7 +7,7 @@ from src.configs.constants import OUTPUT_DIR
 
 
 def load_task_id_by_date(target_dir: Path = None):
-    # Define the matching pattern
+    # 매칭 패턴 정의
     pattern = re.compile(r"(\d{4}-\d{2}-\d{2}-\d{4})_.+")
 
     matched_directories = []

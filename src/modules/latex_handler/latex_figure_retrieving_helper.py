@@ -22,7 +22,7 @@ class LatexFigureRetrievingHelper(object):
             task_id = load_latest_task_id()
             task_dir = Path(f"{OUTPUT_DIR}/{task_id}")
 
-        # general
+        # 공통
         self.task_dir = task_dir
         self.latex_directory = self.task_dir / "latex"
         self.refine_prompt_dir = Path(
@@ -78,7 +78,7 @@ class LatexFigureRetrievingHelper(object):
                 f'- "{figure_title}": \n' + figure_desc.replace("\n", " ") + "\n\n"
             )
 
-        # ---- create caption and label ----
+        # ---- caption과 label 생성 ----
         fig_label = self.get_fig_label()
         caption = f"Examples of {subsec_title}"
         additional_line = f"\caption{{{caption}}}\label{{{fig_label}}}"
@@ -111,10 +111,10 @@ class LatexFigureRetrievingHelper(object):
         return figure_list
 
     def clean_subsec_describe_content(self, content):
-        # Define the regex pattern to match \cite{}, \citet{}, and \citep{} including their contents
+        # \cite{}, \citet{}, \citep{} 와 그 내용을 매칭하는 정규표현식 패턴 정의
         pattern = r"\\cite(?:t|p)?\{.*?\}"
 
-        # Use re.sub() to replace all occurrences with an empty string
+        # re.sub()로 모든 매칭을 빈 문자열로 치환
         cleaned_content = re.sub(pattern, "", content)
 
         return cleaned_content

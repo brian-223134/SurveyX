@@ -15,7 +15,7 @@ class LatexTextBuilder:
         self.tex = load_file_as_string(init_tex_path)
 
     def escape_latex(self, string):
-        # Define LaTeX special characters and their escape sequences
+        # LaTeX 특수문자와 이스케이프 시퀀스 정의
         replacements = {
             "\\": "\\textbackslash{}",
             "{": "\\{",
@@ -28,16 +28,16 @@ class LatexTextBuilder:
             "^": "\\textasciicircum{}",
             "~": "\\textasciitilde{}",
         }
-        # Replace each special character with its LaTeX escape sequence
+        # 각 특수문자를 LaTeX 이스케이프 시퀀스로 치환
         for original, escape in replacements.items():
             string = string.replace(original, escape)
         return string
 
     def make_title(self, title: str, author="author"):
+        r"""
+        \title{}, \author{}, \begin{document}, \maketitle{} 부분을 생성한다.
         """
-        \title{}, \author{}, \begin{document}, \maketitle{}
-        """
-        # 还是会有warning
+        # 그래도 warning이 발생할 수 있음
         # title = self.escape_latex(title)
         # author = self.escape_latex(author)
         self.tex += f"""\n\\title{{{title}}}\n\\author{{{author}}}\n\
@@ -45,8 +45,8 @@ class LatexTextBuilder:
 \\begin{{document}}\n\\maketitle\n"""
 
     def make_abstract(self, abstract: str):
-        """
-        \begin{abstract}, ..., \end{abstract}
+        r"""
+        \begin{abstract}, ..., \end{abstract} 부분을 생성한다.
         """
         self.tex += f"\n \n{abstract}\n"
 
@@ -77,7 +77,7 @@ SurveyX is an AI-powered system designed to automate the generation of surveys. 
         main_body_path: Union[str, Path],
         latex_save_path: Union[str, Path],
     ):
-        """Conver mainbody to a standard latex paper format."""
+        """본문을 표준 LaTeX 논문 형식으로 변환한다."""
 
         outlines = Outlines.from_saved(outlines_path)
         self.make_title(

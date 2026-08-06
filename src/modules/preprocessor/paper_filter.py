@@ -56,8 +56,8 @@ class PaperFilter:
         return results
 
     def coarse_grained_sort(self, topic: str, topk: int = 300) -> list[dict]:
-        """Coarse grained sort based on semantic similarity between user topic and paper abstract.
-        Seletct the most similar top k papers and return.
+        """사용자 topic과 논문 초록 사이의 의미적 유사도를 기준으로 하는 coarse-grained 정렬.
+        가장 유사한 상위 k개 논문을 선택해 반환한다.
         """
         self.create_index()
         nodes = self.get_top_similarity(topic, top_k=topk)
@@ -71,14 +71,14 @@ class PaperFilter:
     def fine_grained_sort(
         self, papers: list[dict], topic: str, min_limit: int = 100
     ) -> list[dict]:
-        """Given abstract and user topic, use chatgpt to determine the relevant papers.
+        """초록과 사용자 topic을 주고 LLM으로 관련 있는 논문을 판별한다.
 
         Args:
-            papers (list[dict]): Papers need to filter.
-            topic (str): User input topic.
+            papers (list[dict]): 필터링할 논문들.
+            topic (str): 사용자가 입력한 topic.
 
         Returns:
-            list[dict]: Papers that gpt consider whose abstract is relevant to the topic.
+            list[dict]: 초록이 topic과 관련 있다고 LLM이 판단한 논문들.
         """
 
         extract_content = lambda text: re.findall(

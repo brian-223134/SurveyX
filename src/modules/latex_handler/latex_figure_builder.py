@@ -1,13 +1,13 @@
 """
-input file:
-    - init file:
+입력 파일:
+    - 초기 파일:
         structure_fig.ini.tex
     - mainbody.tex
     - survey.tex
     - outline.json
-output file:
+출력 파일:
     - structure_fig.tex
-modified file:
+수정되는 파일:
     - survey.tex
 """
 
@@ -69,7 +69,7 @@ class BaseFigureBuilder(ABC):
         random.shuffle(BaseFigureBuilder.palette)
 
 
-# Integrate every figure builder here:
+# 모든 figure builder를 여기에 통합:
 class LatexFigureBuilder(BaseFigureBuilder):
     def __init__(self, task_id: str) -> None:
         super().__init__(task_id)
@@ -78,25 +78,25 @@ class LatexFigureBuilder(BaseFigureBuilder):
         self.tiny_tree_fig_builder = TinyTreeFigureBuilder(task_id)
 
     def run(self, mainbody_path: Path):
-        # -- chapter structure figure
+        # -- 장 구조 그림(chapter structure figure)
         try:
             self.structure_fig_builder.create_structure_figure(
                 input_mainbody_path=mainbody_path,
-            )  # !! create figure mainbody file
+            )  # !! figure용 본문 파일 생성
         except Exception as e:
             tb_str = traceback.format_exc()
             logger.error(f"An error occurred: {e}; The traceback: {tb_str} ")
-        # -- tree figure
+        # -- 트리 그림(tree figure)
         try:
             self.tree_fig_builder.run(
                 self.fig_mainbody_path
-            )  # !! modify figure mainbody file
+            )  # !! figure용 본문 파일 수정
         except Exception as e:
             tb_str = traceback.format_exc()
             logger.error(f"An error occurred: {e}; The traceback: {tb_str} ")
-        # -- tiny tree figure
+        # -- 소형 트리 그림(tiny tree figure)
         try:
-            self.tiny_tree_fig_builder.run()  # !! modify figure mainbody file
+            self.tiny_tree_fig_builder.run()  # !! figure용 본문 파일 수정
         except Exception as e:
             tb_str = traceback.format_exc()
             logger.error(f"An error occurred: {e}; The traceback: {tb_str} ")
@@ -117,18 +117,18 @@ class StructureFigureBuilder(BaseFigureBuilder):
 
         self.tex = load_file_as_string(self.init_structure_fig_path)
         self.outlines_path: Path = Path(OUTPUT_DIR) / task_id / "outlines.json"
-        # output file:
+        # 출력 파일:
         self.structure_fig_path: Path = (
             Path(OUTPUT_DIR) / task_id / "latex" / "figs" / "structure_fig.tex"
         )
 
-    # strcutre figure是创建了mainbody_fig_refined.tex，所以一定要第一个运行
-    # 后面的builder都是在mainbody_fig_refined.tex上进行修改
+    # structure figure가 mainbody_fig_refined.tex를 생성하므로 반드시 가장 먼저 실행해야 한다
+    # 이후의 builder들은 모두 mainbody_fig_refined.tex를 수정한다
     def create_structure_figure(self, input_mainbody_path: Path):
         self.tex = load_file_as_string(self.init_structure_fig_path)
         self.tex += self.color_define()
 
-        # get the top3 citation numbers sections
+        # 인용 수 상위 3개 section 선택
         l = self.sort_section(input_mainbody_path)
         treecode = self.generate_tree(l)
         self.tex += self.insert(treecode)
@@ -158,7 +158,7 @@ class StructureFigureBuilder(BaseFigureBuilder):
         outlines = Outlines.from_saved(self.outlines_path)
         title = outlines.title
         treecode = f"[\\textbf{{{title}}}, root, ver <insert>]"
-        # 1-level node
+        # 1단계 노드
         res = ""
         textwidth_o1 = max(len(x[0].title) for x in paragraph_list) // 2
         for i, (x, t) in enumerate(paragraph_list):
@@ -212,7 +212,7 @@ class StructureFigureBuilder(BaseFigureBuilder):
         return origin.replace("<insert>", tex)
 
     def insert_to_mainbody(self, input_mainbody_path: Path, output_mainbody_path: Path):
-        """insert the structure figure to the mainbody"""
+        """structure figure를 본문에 삽입한다"""
         paragraph_l = Paragraph.from_mainbody_path(input_mainbody_path)
 
         intro = "The following sections are organized as shown in \\autoref{fig:chapter_structure}.\n"
@@ -235,7 +235,7 @@ class TimeShaftFigureBuilder(BaseFigureBuilder):
 class TreeFigureBuilder(BaseFigureBuilder):
     @dataclass
     class Node:
-        """Store the tree-structured information"""
+        """트리 구조 정보를 저장한다"""
 
         title: str
         child: list = field(default_factory=list)
@@ -305,7 +305,7 @@ class TreeFigureBuilder(BaseFigureBuilder):
 
     @staticmethod
     def print_node(node: Node, indent: int = 0):
-        """Recursively print the node"""
+        """노드를 재귀적으로 출력한다"""
         print("\t" * indent, node.title)
         if node.list_:
             print("\t" * (indent + 1), "---", node.list_)
@@ -325,14 +325,14 @@ class TreeFigureBuilder(BaseFigureBuilder):
         self.LEAF_X_POS += self.LEAF_X_POS_DELTA
         leaf_node_name = f"L{str(pos[0]).replace('.', '_')}"
         self.tex += f"\\node[nodeB, fill={{teal!15}}, anchor=north] ({leaf_node_name}) at ({pos[0]}, {pos[1]}) {{{node.title}}};\n"
-        # for list nodes
+        # 리스트 노드용
         list_tex = f"""\\begin{{scope}}[start chain={self.leaf_node_counter} going below]
 \\chainin ({leaf_node_name}) [on chain, join];
 <list_node>
 \\end{{scope}}
 <list_line>
 \n"""
-        # for list nodes
+        # 리스트 노드용
         list_node_tex = ""
         list_line_tex = ""
         for i, list_node in enumerate(node.list_):
@@ -364,12 +364,12 @@ class TreeFigureBuilder(BaseFigureBuilder):
         pos_x = np.mean(childs_pos_array[:, 0])
         pos_y = np.mean(childs_pos_array[:, 1]) + self.PARENT_CHILD_DISTANCE
         node_name = f"{level}_{pos_x:.0f}"
-        # for node
-        if level == 1:  # for root node
+        # 노드용
+        if level == 1:  # 루트 노드용
             self.tex += f"\\node[nodeB, fill={{teal!30}}, anchor=north, text width=15em] ({node_name}) at ({pos_x}, {pos_y}) {{{node.title}}};\n"
         else:
             self.tex += f"\\node[nodeB, fill={{teal!30}}, anchor=north] ({node_name}) at ({pos_x}, {pos_y}) {{{node.title}}};\n"
-        # for Auxiliary point coordinate
+        # 보조 점 좌표용
         for name, (x, y) in zip(childs_name, childs_pos):
             self.tex += f"\\coordinate ({name}_up) at ({x}, {y + 0.4});\n"
             self.tex += f"\draw ({name}_up) -- ({name}.north);\n"
@@ -430,14 +430,14 @@ class TreeFigureBuilder(BaseFigureBuilder):
             ans = clean_chat_agent_format(ans)
             ans = re.sub(
                 r"\\autoref\{[^}]*\}", f"\\\\autoref{{fig:{image_label}}}", ans
-            )  # 修正autoref避免报错
+            )  # autoref를 보정해 오류 방지
         except:
             logger.error(
                 f"Failed to get answer from the chat agent. The response is: {res}"
             )
             logger.error(f"Prompt: {prompt}")
             raise Exception("Failed to get answer from the chat agent")
-        ans += f"\n\\input{{figs/{image_label}}}\n"  # add input code
+        ans += f"\n\\input{{figs/{image_label}}}\n"  # input 코드 추가
         if len(paragraph.content.strip().split()) > 5000:
             logger.error(f"paragraph is too long: {paragraph.content}")
         paragraph.content = paragraph.content.replace(section_words, ans, 1)
@@ -446,7 +446,7 @@ class TreeFigureBuilder(BaseFigureBuilder):
         paragraph_l = Paragraph.from_mainbody_path(mainbody_path)
         content_l = [paragraph.content for paragraph in paragraph_l[2:-1]]
 
-        # extract tree archi in parallel
+        # 트리 구조를 병렬로 추출
         archi_and_score = [None] * len(content_l)
         pbar = tqdm(total=len(content_l), desc="Extracting tree figure key info...")
         with ThreadPoolExecutor(max_workers=num_workers) as executor:
@@ -460,7 +460,7 @@ class TreeFigureBuilder(BaseFigureBuilder):
                 archi_and_score[idx] = result
                 pbar.update(1)
         pbar.close()
-        # choose the highest score.
+        # 점수가 가장 높은 것을 선택
         archi_with_max_score_index, archi_with_max_score = max(
             enumerate(archi_and_score, start=2), key=lambda x: x[1][1]
         )
@@ -471,11 +471,11 @@ class TreeFigureBuilder(BaseFigureBuilder):
             "scores in each chapter: "
             + ", ".join([score for archi, score, caption in archi_and_score])
         )
-        # generate the figure latex code.
+        # 그림 LaTeX 코드 생성
         self.gen_tree_code(
             archi, caption, tree_figure_file_name + ".tex", tree_figure_file_name
         )
-        # add intro to the figure
+        # 그림 소개 문단 추가
         self.add_intro(
             paragraph_l[archi_with_max_score_index],
             caption,
@@ -522,7 +522,7 @@ class TinyTreeFigureBuilder(TreeFigureBuilder):
 \\end{{scope}}
 <list_line>
 \n"""
-        # for list nodes
+        # 리스트 노드용
         list_node_tex = ""
         list_line_tex = ""
         for i, list_node in enumerate(node.list_):
@@ -680,7 +680,7 @@ class TinyTreeFigureBuilder(TreeFigureBuilder):
                             r"\\autoref\{[^}]*\}",
                             f"\\\\autoref{{fig:{image_label}}}",
                             ans,
-                        )  # 修正autoref避免报错
+                        )  # autoref를 보정해 오류 방지
                     except:
                         logger.error(
                             f"Failed to get answer from the chat agent. The response is: {res}"
@@ -688,7 +688,7 @@ class TinyTreeFigureBuilder(TreeFigureBuilder):
                         logger.error(f"Prompt: {prompt[:100]}")
                         logger.error(f"Answer: {ans[:100]}")
                         raise Exception("Failed to get answer from the chat agent")
-                    ans += f"\n\\input{{figs/{image_label}}}\n"  # add input code
+                    ans += f"\n\\input{{figs/{image_label}}}\n"  # input 코드 추가
                     paragraph_l[i].content = paragraph_l[i].content.replace(
                         section_content, ans, 1
                     )
@@ -704,7 +704,7 @@ class TinyTreeFigureBuilder(TreeFigureBuilder):
         sub_paragraph_l = [sub for parag in paragraph_l[2:-1] for sub in parag.sub]
         content_l = [sub_paragraph.content for sub_paragraph in sub_paragraph_l]
 
-        # extract tree archi in parallel
+        # 트리 구조를 병렬로 추출
         archi_and_score = [None] * len(content_l)
         pbar = tqdm(total=len(content_l), desc="Extracting tree figure key info...")
         with ThreadPoolExecutor(max_workers=num_workers) as executor:
@@ -723,14 +723,14 @@ class TinyTreeFigureBuilder(TreeFigureBuilder):
             + ", ".join([score for archi, score, caption in archi_and_score])
         )
 
-        # start to generate tiny tree figure on each section.
+        # 각 section에 대해 tiny tree figure 생성 시작
         start_of_section = 0
         for i, parag in tqdm(
             enumerate(paragraph_l[2:-1]),
             total=len(paragraph_l[2:-1]),
             desc="generating each tiny tree figure...",
         ):
-            # 防止跟retrieve figs冲突
+            # retrieve figs와 충돌하지 않도록 방지
             if "fig:retrieve_fig" in parag.content:
                 continue
 
@@ -743,18 +743,18 @@ class TinyTreeFigureBuilder(TreeFigureBuilder):
                 ),
                 key=lambda x: x[1][1],
             )
-            # if children num of root is less than 3, skip this generation.
+            # 루트의 자식 노드가 3개 미만이면 생성을 건너뜀
             if len(archi_with_max_score[0].child) < 3:
                 continue
             title_of_subsection = sub_paragraph_l[
                 start_of_section + archi_with_max_score_index
             ].title
             tree_figure_file_name = f"tiny_tree_figure_{i}"
-            # add intro in mainbody
+            # 본문에 소개 문단 추가
             self.add_intro(
                 title_of_subsection, archi_with_max_score[2], tree_figure_file_name
             )
-            # generate figure.tex file
+            # figure.tex 파일 생성
             self.gen_latex_code(
                 archi_with_max_score[0],
                 archi_with_max_score[2],
@@ -815,20 +815,21 @@ class MindMapTreeFigureBuilder(BaseFigureBuilder):
 
     def calculate_new_angle(self, x_angle: float, y_angle: float) -> float:
         """
-        一个点相对于原点移动两次，每次只知道移动方向相对于x轴的角度，求最终点相对于原点的角度
+        한 점이 원점을 기준으로 두 번 이동하고 각 이동 방향의 x축 기준 각도만 알 때,
+        최종 점이 원점에 대해 이루는 각도를 구한다.
         """
-        # 将角度转换为弧度
+        # 각도를 라디안으로 변환
         x_rad = math.radians(x_angle)
         y_rad = math.radians(y_angle)
 
-        # 计算总的角度变化
+        # 전체 각도 변화량 계산
         x_total = math.cos(x_rad) + math.cos(y_rad)
         y_total = math.sin(x_rad) + math.sin(y_rad)
 
-        # 计算最终点相对于原点的角度
+        # 최종 점의 원점 기준 각도 계산
         final_angle = math.degrees(math.atan2(y_total, x_total))
 
-        # 确保角度在 [0, 360) 范围内
+        # 각도를 [0, 360) 범위로 보정
         final_angle = final_angle % 360
 
         return final_angle
@@ -843,7 +844,7 @@ class MindMapTreeFigureBuilder(BaseFigureBuilder):
     ) -> str:
         node_name = f"n{level}_{int(angle)}"
         tree_tex = f"child[concept, concept color={color}!{self.LEVEL_TRANPARENCY[level]}!black, grow={angle}] {{ node[concept] ({node_name}) {{{node.title}}} \n }}\n"
-        # for list node
+        # 리스트 노드용
         angle_ = self.calculate_new_angle(list_angle, angle)
         quardrant = self._get_quardrant(angle_)
         position = ["north east", "north west", "south west", "south east"][quardrant]

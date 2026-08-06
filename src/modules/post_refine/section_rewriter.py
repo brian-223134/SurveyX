@@ -1,6 +1,6 @@
 """
 @Reference:
-1. How to create llama index templates: https://blog.csdn.net/lovechris00/article/details/137782020
+1. llama index 템플릿 생성 방법: https://blog.csdn.net/lovechris00/article/details/137782020
 """
 
 import re
@@ -31,7 +31,7 @@ class SectionRewriter(BaseRefiner):
         self.chat_agent.token_monitor = TokenMonitor(task_id, "section rewrite")
 
     def extract_environment_content(self, content, command):
-        """Extracts the content of LaTeX environment commands from a text."""
+        """텍스트에서 LaTeX 환경 명령의 내용을 추출한다."""
         pattern = re.compile(r"\\" + command + r"\{([^}]+)\}")
         res = pattern.findall(content)
         return res if res is not None else []
@@ -63,7 +63,7 @@ class SectionRewriter(BaseRefiner):
                         f"\\{command}{{{content}}}",
                         f"\\{command}{{{current_contents[i]}}}",
                     )
-        # 图片也要对应一下
+        # 그림도 함께 대응시켜야 함
         original_content = self.extract_fig_name(content=original_text)
         current_content = self.extract_fig_name(content=rewritten_text)
         for i, content in enumerate(current_content):
@@ -72,17 +72,17 @@ class SectionRewriter(BaseRefiner):
         return rewritten_text
 
     def extract_section_line(self, latex_text):
-        # 使用正则表达式匹配\section部分
+        # 정규표현식으로 \section 부분 매칭
         match = re.search(r"\\section\{([^}]*)\}\s*\\label\{([^}]*)\}", latex_text)
         if match:
-            section_title = match.group(0)  # 提取完整的\section那一行
+            section_title = match.group(0)  # \section 이 있는 줄 전체를 추출
             return section_title
         return None
 
     def rule_address_gpt_rewrite_issues(
         self, origin_sec_contents: list, new_sec_contents: list
     ):
-        # gpt 有一个很奇怪的bug，会丢掉\section那一行，尝试用规则解决这个问题，或者把\section改成\subsection
+        # GPT가 \section 줄을 통째로 빠뜨리는 이상한 버그가 있다. 규칙으로 보정하거나 \section 을 \subsection 으로 바꾼다
         if len(origin_sec_contents) != len(new_sec_contents):
             logger.error(
                 f"origin_sec_contents: {origin_sec_contents};\n new_sec_contents: {new_sec_contents}"
@@ -110,7 +110,7 @@ class SectionRewriter(BaseRefiner):
                         potential_subsec_line, ""
                     )
 
-        # 保证不改变特定内容
+        # 특정 내용은 변경되지 않도록 보장
         assert len(origin_sec_contents) == len(new_sec_contents)
         for idx in range(len(origin_sec_contents)):
             new_sec_contents[idx] = self.replace_environment_contents(
@@ -120,7 +120,7 @@ class SectionRewriter(BaseRefiner):
             )
 
     def compress_sections(self, origin_sec_contents: list[str]) -> list[str]:
-        # make the paper content more compact
+        # 논문 내용을 더 간결하게 압축
         sec_prompts = []
         origin_lengths = []
         for sec_content in origin_sec_contents:
@@ -143,7 +143,7 @@ class SectionRewriter(BaseRefiner):
             origin_sec_contents=origin_sec_contents, new_sec_contents=new_sec_contents
         )
 
-        # print length
+        # 길이 출력
         current_lengths = [len(one.strip().split()) for one in new_sec_contents]
         for id_, (ori, cur) in enumerate(zip(origin_lengths, current_lengths)):
             logger.info(
@@ -155,7 +155,7 @@ class SectionRewriter(BaseRefiner):
     def rewrite_main_sections(self, origin_sec_contents: list[str]) -> list[str]:
         new_sec_contents = []
 
-        # compress the introduction section
+        # introduction section 압축
         introduction_content = origin_sec_contents[0]
         intro_compression_prompt = load_prompt(
             filename=str(
@@ -170,7 +170,7 @@ class SectionRewriter(BaseRefiner):
         )
         new_sec_contents.append(introduction_content)
 
-        # iteratively rewrite sections
+        # section들을 반복적으로 재작성
         compressed_context = compressed_intro
         sec_id = 2
         for sec_content in tqdm(
@@ -213,7 +213,7 @@ class SectionRewriter(BaseRefiner):
             origin_sec_contents=origin_sec_contents, new_sec_contents=new_sec_contents
         )
 
-        # print length
+        # 길이 출력
         origin_lengths = [len(one.strip().split()) for one in origin_sec_contents]
         current_lengths = [len(one.strip().split()) for one in new_sec_contents]
         for id_, (ori, cur) in enumerate(zip(origin_lengths, current_lengths)):
@@ -234,7 +234,7 @@ class SectionRewriter(BaseRefiner):
         conclusion = self.chat_agent.remote_chat(prompt, model=ADVANCED_CHATAGENT_MODEL)
         conclusion = clean_chat_agent_format(content=conclusion)
 
-        # 查看重写后是否有问题
+        # 재작성 결과에 문제가 없는지 확인
         origin_conclusion_tmp_list = [origin_conclusion_text]
         new_conclusion_tmp_list = [conclusion]
         self.rule_address_gpt_rewrite_issues(
@@ -249,7 +249,7 @@ class SectionRewriter(BaseRefiner):
         if mainbody_path is None:
             mainbody_path = self.mainbody_path
         survey_sections = self.load_survey_sections(mainbody_path)
-        # compression
+        # 압축
         sec_contents = [one.content for one in survey_sections]
         try:
             compressed_survey_sections = self.compress_sections(
@@ -262,8 +262,8 @@ class SectionRewriter(BaseRefiner):
             )
             compressed_survey_sections = sec_contents
 
-        # ------ 使用迭代重写 --------
-        # enhance coherence
+        # ------ 반복 재작성 사용 --------
+        # 일관성 강화
         try:
             rewritten_survey_sections = self.rewrite_main_sections(
                 origin_sec_contents=compressed_survey_sections[:-1]
@@ -281,7 +281,7 @@ class SectionRewriter(BaseRefiner):
         )
         rewritten_survey_sections.append(new_conclusion)
 
-        # # ------- 不使用迭代重写 --------
+        # # ------- 반복 재작성 미사용 --------
         # rewritten_survey_sections = compressed_survey_sections
 
         rewritten_survey_text = "\n".join(rewritten_survey_sections)
@@ -293,6 +293,6 @@ class SectionRewriter(BaseRefiner):
 if __name__ == "__main__":
     task_id = load_latest_task_id()
     print(f"task_id: {task_id}")
-    # store vector index into local directory for the convenience of debugging
+    # 디버깅 편의를 위해 vector index를 로컬 디렉터리에 저장
     sec_rewriter = SectionRewriter(task_id=task_id)
     sec_rewriter.run()

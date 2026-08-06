@@ -1,6 +1,6 @@
 """
 @Reference:
-1. How to create llama index templates: https://blog.csdn.net/lovechris00/article/details/137782020
+1. llama index 템플릿 생성 방법: https://blog.csdn.net/lovechris00/article/details/137782020
 """
 
 import json
@@ -37,7 +37,7 @@ class FigRetrieveRefiner(RagRefiner):
             f"{RESOURCE_DIR}/LLM/prompts/fig_retrieve_refiner"
         )
 
-        # ========= settings for retrieving ============
+        # ========= 검색(retrieving) 설정 ============
         self.fig_retriever = FigRetriever(is_debug=False)
         self.chat_agent.token_monitor = TokenMonitor(
             task_id, "Multimodal figure retrieve"
@@ -55,7 +55,7 @@ class FigRetrieveRefiner(RagRefiner):
             "architecture",
             "enhancements",
         ]
-        # how many times the fig retrieving has been triggered
+        # 그림 검색이 몇 번 실행되었는지
         self.trigger_count = 0
         self.trigger_limit = 2
         self.relevant_paper_limit = 30
@@ -67,7 +67,7 @@ class FigRetrieveRefiner(RagRefiner):
         self.random_select_paper_limit = self.relevant_paper_limit
         self.fig_size_filter_scale = 1.5
 
-        # ============ making latex ===============
+        # ============ LaTeX 생성 ===============
         self.figs_dir = self.task_dir / "latex/figs"
         self.global_visited_fig_links = set()
 
@@ -84,7 +84,7 @@ class FigRetrieveRefiner(RagRefiner):
             if are_key_words_contained(
                 content=paper["bib_name"], key_words=citation_list
             ):
-                # Keep only the desired attributes
+                # 필요한 속성만 유지
                 filtered_paper = {
                     "image": []
                     if paper.get("image") is None
@@ -140,7 +140,7 @@ class FigRetrieveRefiner(RagRefiner):
         return new_paper_set
 
     def process_and_download_figs(self, figure_list: list, figs_dir: Path = None):
-        # 有一些图片的信息不对，需要清洗一下
+        # 일부 이미지의 정보가 잘못되어 있어 정제가 필요함
         prompt_l = []
         for i in range(len(figure_list)):
             origin_desc = figure_list[i]["figure_desc"]
@@ -163,7 +163,7 @@ class FigRetrieveRefiner(RagRefiner):
             content = res_l[i]
             content = clean_chat_agent_format(content=content)
             try:
-                # clean json str if necessary
+                # 필요하면 JSON 문자열 정제
                 content = json.loads(content)
                 figure_list[i]["title"] = content["title"]
                 figure_list[i]["desc"] = content["desc"]
@@ -171,10 +171,10 @@ class FigRetrieveRefiner(RagRefiner):
             except Exception as e:
                 logger.error(f"Fail to parse figure {i}: {content}; Exception: {e}")
 
-        # 去掉有问题的图片
+        # 문제가 있는 이미지 제거
         figure_list = figure_list_with_desc
 
-        # 存储图片
+        # 이미지 저장
         image_paths = self.fig_retriever.download_figs(
             figure_list=figure_list, figs_dir=figs_dir
         )
@@ -224,10 +224,10 @@ class FigRetrieveRefiner(RagRefiner):
             return figure_list
         if scale is None:
             scale = self.fig_size_filter_scale
-        # 计算第一个图片的比例
+        # 첫 번째 이미지의 비율 계산
         base_ratio = figure_list[0]["figure_size"][0] / figure_list[0]["figure_size"][1]
 
-        # 筛选符合比例范围的图片
+        # 비율 범위에 맞는 이미지만 선별
         filtered_list = [
             figure
             for figure in figure_list
@@ -240,7 +240,7 @@ class FigRetrieveRefiner(RagRefiner):
     def refine_a_subsection(
         self, subsection: Paragraph, section_title: str, paper_retrieve_limit: int
     ):
-        # ---- rag to retrieve relevant papers ---------
+        # ---- RAG로 관련 논문 검색 ---------
         logger.debug("retrieve relevant papers...")
         results = self.llamaindex_retriever.retrieve(subsection.title)[
             :paper_retrieve_limit
@@ -295,7 +295,7 @@ class FigRetrieveRefiner(RagRefiner):
             figure_list = self.filter_figs_by_fig_size(
                 figure_list=figure_list, scale=self.fig_size_filter_scale
             )
-            # only generate paragraphs for retrieved figs if at least have two figures
+            # 그림이 2개 이상일 때만 검색된 그림에 대한 문단 생성
             figure_list = self.process_and_download_figs(
                 figure_list=figure_list, figs_dir=self.figs_dir
             )
@@ -308,7 +308,7 @@ class FigRetrieveRefiner(RagRefiner):
                 logger.debug(
                     f"Only retrieved {len(figure_list)} figs. Failed to insert retrieved figs in subsection {subsection.title}"
                 )
-                return None  # failed
+                return None  # 실패
         except Exception as e:
             tb_str = traceback.format_exc()
             logger.error(f"An error occurred: {e}; The traceback: {tb_str}")
@@ -329,7 +329,7 @@ class FigRetrieveRefiner(RagRefiner):
 
     def refine_a_section(self, section: Paragraph, sec_id: int):
         if self.trigger_count > self.trigger_limit:
-            # directly return without refinement
+            # refine 없이 바로 반환
             return section, 0
         success_count_total = 0
         revised_content = section.content
@@ -339,7 +339,7 @@ class FigRetrieveRefiner(RagRefiner):
                 content=title, key_words=self.trigger_words_in_subsections
             ):
                 continue
-            # --- refine this subsection---
+            # --- 이 subsection을 refine ---
             # try:
             revised_subsection = self.refine_a_subsection(
                 subsection=sub_sec,
@@ -361,10 +361,10 @@ class FigRetrieveRefiner(RagRefiner):
         if mainbody_path is None:
             mainbody_path = self.mainbody_path
         survey_sections = self.load_survey_sections(mainbody_path)
-        candidate_sec_ids = list(range(3, 6))  # section 3 to section 5
+        candidate_sec_ids = list(range(3, 6))  # section 3부터 section 5까지
         refined_survey = []
         for section in survey_sections:
-            # exclude the sections such as introduction, background, limitaitons, conclusion
+            # introduction, background, limitations, conclusion 같은 section은 제외
             if int(section.no) not in candidate_sec_ids:
                 refined_survey.append(section.content)
             else:
@@ -384,6 +384,6 @@ class FigRetrieveRefiner(RagRefiner):
 if __name__ == "__main__":
     task_id = load_latest_task_id()
     print(f"task_id: {task_id}")
-    # store vector index into local directory for the convenience of debugging
+    # 디버깅 편의를 위해 vector index를 로컬 디렉터리에 저장
     fig_retrieve_refiner = FigRetrieveRefiner(task_id=task_id)
     fig_retrieve_refiner.run()

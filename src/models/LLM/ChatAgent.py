@@ -1,6 +1,6 @@
 """
 @reference:
-1.发送本地图片： https://www.cnblogs.com/Vicrooor/p/18227547
+1. 로컬 이미지 전송 방법: https://www.cnblogs.com/Vicrooor/p/18227547
 """
 
 import fcntl
@@ -74,12 +74,12 @@ class ChatAgent:
         debug: bool = False,
         model=DEFAULT_CHATAGENT_MODEL,
     ) -> str:
-        """chat with remote LLM, return result."""
+        """원격 LLM과 대화하고 결과를 반환한다."""
         url = self.remote_url
         header = self.header
-        # text content
+        # 텍스트 콘텐츠
         messages = [{"role": "user", "content": text_content}]
-        # insert image urls ----
+        # 이미지 URL 삽입 ----
         if (
             image_urls is not None
             and isinstance(image_urls, list)
@@ -93,7 +93,7 @@ class ChatAgent:
             image_message_frame = {"role": "user", "content": image_url_frame}
             messages.append(image_message_frame)
 
-        # insert local images ----
+        # 로컬 이미지 삽입 ----
         if (
             local_images is not None
             and isinstance(local_images, list)
@@ -123,7 +123,7 @@ class ChatAgent:
             )
             status_code = 0 if response.status_code != 200 else 1
 
-            # 加了线程锁
+            # 스레드 락 적용됨
             self.update_record(
                 status_code=status_code,
                 response_code=response.status_code,
@@ -134,8 +134,8 @@ class ChatAgent:
         try:
             res = json.loads(response.text)
             res_text = res["choices"][0]["message"]["content"]
-            # 更新总开销
-            # token monitor
+            # 총 비용 갱신
+            # 토큰 모니터
             if self.token_monitor:
                 self.token_monitor.add_token(
                     model=model,
@@ -158,7 +158,7 @@ class ChatAgent:
             return res_text, response
         return res_text
 
-    # map chat index
+    # 대화 인덱스 매핑
     def __remote_chat(
         self,
         index,
@@ -184,18 +184,18 @@ class ChatAgent:
         temperature: float = 0.5,
     ) -> list[str]:
         """
-        开启多线程进行对话
+        멀티스레드로 대화를 수행한다.
         """
         if workers is None:
             workers = self.batch_workers
-        # 创建线程池
+        # 스레드 풀 생성
         with ThreadPoolExecutor(max_workers=workers) as executor:
-            # 提交任务
+            # 작업 제출
             future_l = [
                 executor.submit(self.__remote_chat, i, prompt_l[i], temperature)
                 for i in range(len(prompt_l))
             ]
-            # 领取任务结果
+            # 작업 결과 수집
             res_l = ["no response"] * len(prompt_l)
             for future in tqdm(
                 as_completed(future_l),
@@ -211,25 +211,25 @@ class ChatAgent:
     def update_record(
         cls, status_code: int, response_code: int, request: str, response: str
     ):
-        "维护记录文件"
+        """기록 파일을 관리한다."""
         content = (
             f"{status_code}{cls.Record_splitter}{response_code}{cls.Record_splitter}{request[: cls.Record_show_length]}{cls.Record_splitter}{response[: cls.Record_show_length]}".replace(
                 "\n", ""
             )
             + "\n"
         )
-        # 检查文件是否存在
+        # 파일 존재 여부 확인
         if not os.path.exists(cls.Request_stats_file):
             parent_dir = Path(cls.Request_stats_file).parent
             parent_dir.mkdir(parents=True, exist_ok=True)
             with open(cls.Request_stats_file, "w", encoding="utf-8") as fw:
-                fcntl.flock(fw, fcntl.LOCK_EX)  # 加锁
+                fcntl.flock(fw, fcntl.LOCK_EX)  # 락 획득
                 fw.write(content)
                 logger.info(
                     f"record file {cls.Request_stats_file} did not exist, created and initialized with 0.0"
                 )
                 fcntl.flock(fw, fcntl.LOCK_UN)
-        # 更新开销总计
+        # 누적 비용 갱신
         try:
             with open(cls.Request_stats_file, "a", encoding="utf-8") as fw:
                 fcntl.flock(fw, fcntl.LOCK_EX)
@@ -240,7 +240,7 @@ class ChatAgent:
 
     def local_chat(self, query, debug=False) -> str:
         """
-        调用本地LLM进行推理, 保证端口已开启
+        로컬 LLM을 호출해 추론한다. 포트가 열려 있어야 한다.
         """
         query = """
             <|begin_of_text|><|start_header_id|>system<|end_header_id|>
@@ -253,7 +253,7 @@ class ChatAgent:
                 "temperature": 1.0,
                 "max_tokens": 102400,
                 "n": 1,
-                # 可选的参数在这里：https://github.com/vllm-project/vllm/blob/main/vllm/sampling_params.py
+                # 사용 가능한 파라미터 목록: https://github.com/vllm-project/vllm/blob/main/vllm/sampling_params.py
             }
         )
         headers = {"Content-Type": "application/json"}
@@ -270,15 +270,15 @@ class ChatAgent:
 
     def batch_local_chat(self, query_l, worker=16, desc="bach local inferencing..."):
         """
-        多线程本地推理
+        멀티스레드 로컬 추론
         """
         with ThreadPoolExecutor(max_workers=worker) as executor:
-            # 提交任务
+            # 작업 제출
             future_l = [
                 executor.submit(self.__local_chat, i, query_l[i])
                 for i in range(len(query_l))
             ]
-            # 领取任务结果
+            # 작업 결과 수집
             res_l = ["no response"] * len(query_l)
             for future in tqdm(as_completed(future_l), desc=desc, total=len(future_l)):
                 i, resp = future.result()
@@ -297,7 +297,7 @@ class ChatAgent:
                 elements = line.strip().split(ChatAgent.Record_splitter)
                 succ_count += int(elements[0])
                 total_count += 1
-            logger.info(f"请求成功率：{round(succ_count / total_count * 100, 2)}%")
+            logger.info(f"요청 성공률: {round(succ_count / total_count * 100, 2)}%")
 
     @staticmethod
     def clean_request_stats():
@@ -308,9 +308,9 @@ class ChatAgent:
 
 if __name__ == "__main__":
     agent = ChatAgent()
-    text_content = "图片里面有什么"
+    text_content = "What is in this image?"
 
-    # result = agent.remote_chat(text_content="今天天气怎么样",  model="gpt-4o")
+    # result = agent.remote_chat(text_content="How is the weather today?",  model="gpt-4o")
     # print(result)
     #
     # image_urls = ["https://dashscope.oss-cn-beijing.aliyuncs.com/images/dog_and_girl.jpeg"]

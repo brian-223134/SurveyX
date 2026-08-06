@@ -4,7 +4,7 @@ from pathlib import Path
 
 FILE_PATH = Path(__file__).absolute()
 BASE_DIR = FILE_PATH.parent.parent
-sys.path.insert(0, str(BASE_DIR))  # run code in any path
+sys.path.insert(0, str(BASE_DIR))  # 어느 경로에서 실행해도 동작하도록 설정
 
 """remove log files"""
 def delete_log_files(root_dir):

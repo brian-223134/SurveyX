@@ -21,15 +21,15 @@ logger = get_logger("src.modules.latex_handler.BaseTableBuilder")
 class LatexBaseTableBuilder:
     def __init__(self, chat_agent: ChatAgent = None):
         """
-        Base class initializer. This method is intentionally left empty to allow subclasses
-        to implement their own initialization logic.
+        기반 클래스 초기화 메서드. 하위 클래스가 자체 초기화 로직을 구현할 수 있도록
+        의도적으로 비워 두었다.
         """
         self.chat_agent = chat_agent if chat_agent is not None else ChatAgent()
 
     def clear_json_file(self, file_path):
-        # 打开文件并清空内容
+        # 파일을 열어 내용을 비움
         with open(file_path, "w") as f:
-            # 将空字典写入文件以清空内容
+            # 빈 딕셔너리를 기록해 내용을 초기화
             json.dump([], f)
 
     def is_the_row_good(self, row: str, splitter: str = "&"):
@@ -44,14 +44,14 @@ class LatexBaseTableBuilder:
 
     def cite_name_match(self, data_list: List, cite_name: str) -> Tuple:
         """
-        Retrieve relevant information from the attribute tree based on the cite name.
+        cite name을 기준으로 attribute tree에서 관련 정보를 가져온다.
 
         Args:
-            data_list: A list used to store the attribute tree.
-            cite_name: The cite name of the paper.
+            data_list: attribute tree를 담고 있는 리스트.
+            cite_name: 논문의 cite name.
 
         Returns:
-            tuple: Output tuple contains information about the method description in the attribute tree.
+            tuple: attribute tree 내 method 설명 정보를 담은 튜플.
         """
         for data in data_list:
             if (
@@ -115,40 +115,41 @@ class LatexBaseTableBuilder:
 
     def extract_attributes(self, file_content, pri_attribute):
         """
-        Extract the required information from the LLM response.
+        LLM 응답에서 필요한 정보를 추출한다.
+
         Args:
-            file_content: The response of LLM.
+            file_content: LLM의 응답.
 
         Returns:
-            tuple: A tuple containing the attribute name and its description.
+            tuple: 속성 이름과 그 설명을 담은 튜플.
         """
-        # 修改为新的正则表达式
+        # 새로운 정규표현식으로 변경
         primary_pattern = re.compile(
             r"\[Attribute:\s*(.*?)\]", re.DOTALL
-        )  # 匹配 Attribute: Name
+        )  # "Attribute: Name" 매칭
         description_pattern = re.compile(
             r"\[Description:\s*(.*?)\]", re.DOTALL
-        )  # 匹配 Description: XXX
+        )  # "Description: XXX" 매칭
 
-        # 提取匹配的内容
+        # 매칭된 내용 추출
         primary_match = primary_pattern.search(file_content)
         description_match = description_pattern.search(file_content)
 
-        # 初始化结果
+        # 결과 초기화
         attribute_name = None
         description_text = None
 
-        # 如果找到Primary Attribute，提取其内容
+        # Primary Attribute를 찾으면 그 내용을 추출
         if primary_match:
             attribute_name = primary_match.group(1)
 
-        # 如果找到Description，提取其内容
+        # Description을 찾으면 그 내용을 추출
         if description_match:
             description_text = description_match.group(1)
 
         if attribute_name is None or description_text is None:
             return None
-        # 结果字典
+        # 결과 딕셔너리
         result = {
             "Primary Attribute Name": pri_attribute,
             "Secondary Attribute Name": attribute_name,
@@ -158,7 +159,7 @@ class LatexBaseTableBuilder:
 
     def save_attributes(self, attribute_name, description, file_name, type):
         """
-        Save the attributes to the specified JSON file.
+        속성들을 지정한 JSON 파일에 저장한다.
         """
         directory = os.path.dirname(file_name)
         if directory and not os.path.exists(directory):
@@ -173,7 +174,7 @@ class LatexBaseTableBuilder:
                 "Primary Attribute Name": attribute_name,
                 "Description": description,
             }
-            # 检查是否已经存在相同的Primary Attribute Name
+            # 동일한 Primary Attribute Name이 이미 있는지 확인
             exists = any(
                 item.get("Primary Attribute Name") == attribute_name for item in data
             )
@@ -182,28 +183,28 @@ class LatexBaseTableBuilder:
                 "Secondary Attribute Name": attribute_name,
                 "Description": description,
             }
-            # 检查是否已经存在相同的Primary Attribute Name
+            # 동일한 Primary Attribute Name이 이미 있는지 확인
             exists = any(
                 item.get("Secondary Attribute Name") == attribute_name for item in data
             )
-        # 如果不存在，添加到列表并写入文件
+        # 없으면 리스트에 추가하고 파일에 기록
         if not exists:
             data.append(new_entry)
             with open(file_name, "w") as file:
                 json.dump(data, file, indent=4)
 
-    # 处理文章的方法
+    # 논문에서 소개된 method 처리
     def process_article(self, result, secondary_attribute_path):
         """
-        Load attribute data from the result.
+        결과에서 속성 데이터를 불러온다.
         """
-        # # 处理Primary Attribute Name
+        # # Primary Attribute Name 처리
         # primary_attribute = result.get("Primary Attribute Name")
         # primary_description = result.get("Description1")
         # if primary_attribute and primary_description:
         #     save_attributes(primary_attribute, primary_description, primary_attribute_path, 0)
 
-        # 处理Secondary Attribute Name
+        # Secondary Attribute Name 처리
         secondary_attribute = result.get("Secondary Attribute Name")
         secondary_description = result.get("Description")
         if secondary_attribute and secondary_description:
@@ -213,12 +214,12 @@ class LatexBaseTableBuilder:
 
     def process_data(self, data_list):
         """
-        Process a list of dictionaries to extract specific attributes and organize them
-        into the desired format, while avoiding duplicate Secondary Attribute Names.
+        딕셔너리 리스트를 처리해 특정 속성을 추출하고 원하는 형식으로 정리한다.
+        이때 Secondary Attribute Name의 중복은 제거한다.
         """
         result = {}
         secondary_attributes = []
-        seen_names = set()  # Set to track already processed 'Secondary Attribute Name'
+        seen_names = set()  # 이미 처리한 'Secondary Attribute Name'을 추적하는 집합
 
         for item in data_list:
             if item is None:
@@ -227,60 +228,60 @@ class LatexBaseTableBuilder:
             secondary_attr_name = item.get("Secondary Attribute Name")
             description = item.get("Description")
 
-            # Skip if Secondary Attribute Name is duplicate
+            # Secondary Attribute Name이 중복이면 건너뜀
             if secondary_attr_name in seen_names:
                 continue
 
-            # Add unique Secondary Attribute Name to the set
+            # 중복이 아닌 Secondary Attribute Name을 집합에 추가
             seen_names.add(secondary_attr_name)
 
-            # Add the secondary attribute to the list
+            # 해당 secondary attribute를 리스트에 추가
             secondary_attributes.append(
                 {"Name": secondary_attr_name, "Description": description}
             )
 
-            # Set the Primary Attribute for the result dictionary (assuming all Primary Attribute Names are the same)
+            # 결과 딕셔너리에 Primary Attribute 설정(모든 Primary Attribute Name이 동일하다고 가정)
             if "Primary Attribute" not in result:
                 result["Primary Attribute"] = primary_attr
 
-        # Assign the Secondary Attributes list to the result dictionary
+        # Secondary Attribute 리스트를 결과 딕셔너리에 할당
         result["Secondary Attributes"] = secondary_attributes
 
         return result
 
     def replace_secondary_attributes(self, data_list, attribute_dict):
         """
-        Replace 'Secondary Attribute Name' in data_list with corresponding keys from attribute_dict
-        if the attribute name exists in attribute_dict values.
+        data_list의 'Secondary Attribute Name'이 attribute_dict의 값에 존재하면,
+        해당 항목을 attribute_dict의 키로 치환한다.
 
         Parameters:
-            data_list (list): A list of dictionaries containing 'Secondary Attribute Name'.
-            attribute_dict (dict): A dictionary mapping categories to attribute names.
+            data_list (list): 'Secondary Attribute Name'을 담은 딕셔너리 리스트.
+            attribute_dict (dict): 카테고리와 속성 이름을 매핑한 딕셔너리.
 
         Returns:
-            list: Updated list with 'Secondary Attribute Name' replaced where applicable.
+            list: 'Secondary Attribute Name'이 치환된 리스트.
         """
-        # Create a reverse mapping of attributes to their categories
+        # 속성 → 카테고리 역매핑 생성
         reverse_mapping = {
             attr: key for key, attrs in attribute_dict.items() for attr in attrs
         }
 
-        # Process each dictionary in the data list
+        # 리스트의 각 딕셔너리 처리
         for item in data_list:
             secondary_name = item.get("Secondary Attribute Name")
             if secondary_name in reverse_mapping:
-                # Replace the secondary attribute name with the category
+                # secondary attribute 이름을 카테고리로 치환
                 item["Secondary Attribute Name"] = reverse_mapping[secondary_name]
 
         return data_list
 
     def extract_and_convert(self, text):
-        # 使用正则表达式提取 <Answer> 标签中的内容
+        # 정규표현식으로 <Answer> 태그 안의 내용 추출
         match = re.search(r"<Answer>\s*(\{.*?\})\s*</Answer>", text, re.DOTALL)
         if match:
             content = match.group(1)
             try:
-                # 使用 ast.literal_eval 将字符串安全地解析为 Python 字典
+                # ast.literal_eval로 문자열을 안전하게 Python 딕셔너리로 파싱
                 dictionary = ast.literal_eval(content)
                 return dictionary
             except (SyntaxError, ValueError) as e:
@@ -292,23 +293,23 @@ class LatexBaseTableBuilder:
 
     def data_convert(self, triplets):
         """
-        Convert the raw data into the desired format.
+        원본 데이터를 원하는 형식으로 변환한다.
         """
-        # 初始化字典
+        # 딕셔너리 초기화
         data = defaultdict(lambda: defaultdict(list))
 
-        # 遍历三元组数据
+        # 삼중항(triplet) 데이터 순회
         for triplet in triplets:
             category = triplet["Category"]
             feature = triplet["Feature"]
             method = triplet["Method"]
-            # 将方法添加到相应的特征下
+            # 해당 feature 아래에 method 추가
             data[category][feature].append(method)
 
-        # 将默认字典转换为目标数据格式
+        # defaultdict를 목표 데이터 형식으로 변환
         final_data = {"Category": [], "Feature": [], "Method": []}
 
-        # 构建最终的字典
+        # 최종 딕셔너리 구성
         for category, features in data.items():
             final_data["Category"].append(category)
             feature_list = []
@@ -322,9 +323,9 @@ class LatexBaseTableBuilder:
 
     def extract_cite_name(self, text: str) -> List[str]:
         """
-        Extracts the cite name from a paragraph.
+        문단에서 cite name을 추출한다.
         """
-        # 使用正则表达式匹配 \cite{xxx} 中的内容
+        # 정규표현식으로 \cite{xxx} 안의 내용을 매칭
         result = []
         cite_names = re.findall(r"\\cite\{(.*?)\}", text)
         for name in cite_names:
@@ -334,13 +335,13 @@ class LatexBaseTableBuilder:
 
     def load_table_data(self, dir_path):
         """
-        Load the source files needed to generate the table.
+        표 생성에 필요한 원본 파일들을 불러온다.
         """
         data = []
-        # 临时存储每个文件的读取结果
+        # 각 파일의 읽기 결과를 임시 저장
         temp_data = []
 
-        # 遍历目录中的文件
+        # 디렉터리 내 파일 순회
         if not os.path.isdir(dir_path):
             print(f"The directory {dir_path} does not exist or is not accessible.")
             return None
@@ -348,19 +349,19 @@ class LatexBaseTableBuilder:
             if filename.endswith(".json"):
                 file_path = os.path.join(dir_path, filename)
                 with open(file_path, "r", encoding="utf-8") as file:
-                    result = json.load(file)  # 将 JSON 文件内容读取为 Python 字典
-                    # 读取数据并按顺序添加
+                    result = json.load(file)  # JSON 파일 내용을 Python 딕셔너리로 읽기
+                    # 데이터를 읽어 순서대로 추가
                     dict = {}
                     dict["Category"] = result["Primary Attribute Name"]
                     dict["Feature"] = result["Secondary Attribute Name"]
                     dict["Method"] = result["cite_name"]
-                    dict["Order"] = result["order"]  # 获取顺序
+                    dict["Order"] = result["order"]  # 순서 값 가져오기
                     temp_data.append(dict)
 
-        # 按照 'Order' 排序数据
-        temp_data.sort(key=lambda x: x["Order"])  # 按 'Order' 字段排序
+        # 'Order' 기준으로 데이터 정렬
+        temp_data.sort(key=lambda x: x["Order"])  # 'Order' 필드 기준 정렬
 
-        # 将排序后的数据添加到最终结果列表中
+        # 정렬된 데이터를 최종 결과 리스트에 추가
         for item in temp_data:
             data.append(
                 {
@@ -374,18 +375,18 @@ class LatexBaseTableBuilder:
 
     def extract_section_content(self, tex_file_path: str, section_name: str) -> str:
         """
-        Extracts the content of a specific section from a .tex file.
+        .tex 파일에서 특정 section의 내용을 추출한다.
 
         Args:
-            tex_file_path (str): The path to the .tex file to read.
-            section_name (str): The name of the section to extract.
+            tex_file_path (str): 읽어들일 .tex 파일 경로.
+            section_name (str): 추출할 section 이름.
 
         Returns:
-            str: The content of the specified section.
+            str: 해당 section의 내용.
         """
         with open(tex_file_path, "r", encoding="utf-8") as file:
             content = file.read()
-        # 正则表达式匹配指定的section及其内容
+        # 정규표현식으로 지정한 section과 그 내용을 매칭
         pattern = re.compile(
             r"(\\section\{" + re.escape(section_name) + r"\}.*?)(?=\\section|$)",
             re.DOTALL,
@@ -399,19 +400,19 @@ class LatexBaseTableBuilder:
 
     def extract_section_mainbody(self, tex_file_path: str, section_name: str) -> str:
         """
-        Extracts the content of a specific section from a .tex file, excluding the section title and labels.
+        .tex 파일에서 특정 section의 내용을 추출한다. section 제목과 label은 제외한다.
 
         Args:
-            tex_file_path (str): The path to the .tex file to read.
-            section_name (str): The name of the section to extract.
+            tex_file_path (str): 읽어들일 .tex 파일 경로.
+            section_name (str): 추출할 section 이름.
 
         Returns:
-            str: The content of the specified section.
+            str: 해당 section의 내용.
         """
         with open(tex_file_path, "r", encoding="utf-8") as file:
             content = file.read()
 
-        # 正则表达式匹配指定的section正文，排除\section和\label部分
+        # 정규표현식으로 지정한 section 본문을 매칭. \section과 \label 부분은 제외
         pattern = re.compile(
             r"\\section\{"
             + re.escape(section_name)
@@ -429,18 +430,18 @@ class LatexBaseTableBuilder:
         self, tex_file_path: str, subsection_name: str
     ) -> str:
         """
-        Extracts the content of a specific section from a .tex file.
+        .tex 파일에서 특정 subsection의 내용을 추출한다.
 
         Args:
-            tex_file_path (str): The path to the .tex file to read.
-            section_name (str): The name of the section to extract.
+            tex_file_path (str): 읽어들일 .tex 파일 경로.
+            section_name (str): 추출할 subsection 이름.
 
         Returns:
-            str: The content of the specified section.
+            str: 해당 subsection의 내용.
         """
         with open(tex_file_path, "r", encoding="utf-8") as file:
             content = file.read()
-        # 正则表达式匹配指定的section及其内容
+        # 정규표현식으로 지정한 subsection과 그 내용을 매칭
         pattern = re.compile(
             rf"(\\subsection\{{{re.escape(subsection_name)}\}}.*?)(?=(\\section|\\subsection|$))",
             re.DOTALL,
@@ -453,46 +454,46 @@ class LatexBaseTableBuilder:
             # return f"subsection '{subsection_name}' not found."
 
     def extract_subsections(self, text):
-        # 使用正则表达式匹配每个subsection标题及其内容
-        # 匹配subsection及其内容
+        # 정규표현식으로 각 subsection 제목과 그 내용을 매칭
+        # subsection과 그 내용 매칭
         subsection_pattern = r"(\\subsection\{.*?\}.*?)(?=\\subsection|$)"
         subsections = re.findall(subsection_pattern, text, re.DOTALL)
 
         title_pattern = r"\\subsection\{(.*?)\}"
         titles = [re.search(title_pattern, sub).group(1) for sub in subsections]
-        # 返回subsection标题和内容
+        # subsection 제목과 내용 반환
         return [sub.strip() for sub in subsections], [title for title in titles]
 
     def extract_section_title(self, text):
-        # 使用正则表达式提取以 \section 开头的段落
+        # 정규표현식으로 \section 으로 시작하는 문단 추출
         section_pattern = r"\\section\{.*?\}.*?\\label\{.*?\}"
         section_title = re.findall(section_pattern, text, re.DOTALL)
         return section_title[0]
 
     def extract_subsection_title(self, text):
-        # 使用正则表达式提取以 \section 开头的段落
+        # 정규표현식으로 \section 으로 시작하는 문단 추출
         section_pattern = r"\\subsection\{.*?\}.*?\\label\{.*?\}"
         section_title = re.findall(section_pattern, text, re.DOTALL)
         return section_title[0]
 
     def supplement_data(self, current_data, dir_path, target_size):
         """
-        补充召回数据，确保数据总数达到 target_size。
-        :param current_data: 当前召回的数据列表（字典类型）
-        :param dir_path: 数据库文件夹路径
-        :param target_size: 目标数据数量
-        :return: 最终数据列表
+        데이터 개수가 target_size에 도달하도록 리콜 데이터를 보충한다.
+        :param current_data: 현재 리콜된 데이터 리스트(딕셔너리 타입)
+        :param dir_path: 데이터베이스 폴더 경로
+        :param target_size: 목표 데이터 개수
+        :return: 최종 데이터 리스트
         """
-        # 从文件夹读取所有数据
+        # 폴더에서 모든 데이터 읽기
         data_list = load_meta_data(dir_path)
         benchmark_list = []
         for data in data_list:
             if data["paper_type"] == "benchmark":
                 benchmark_list.append(data)
-        # 提取当前召回数据的 bib_name 字段集合
+        # 현재 리콜된 데이터의 bib_name 필드 집합 추출
         current_bib_names = {item["bib_name"] for item in current_data}
 
-        # 从数据库中过滤掉与当前已有数据重复的项，并提取指定字段
+        # 데이터베이스에서 기존 데이터와 중복되는 항목을 제외하고 지정한 필드만 추출
         remaining_data = []
         for item in benchmark_list:
             if (
@@ -512,7 +513,7 @@ class LatexBaseTableBuilder:
                 }
                 remaining_data.append(info)
 
-        # 补充数据
+        # 데이터 보충
         supplemented_data = current_data[:]
         for item in remaining_data:
             if len(supplemented_data) < target_size:
@@ -524,13 +525,13 @@ class LatexBaseTableBuilder:
 
     def get_sections(self, survey_path: str) -> List[str]:
         """
-        Get the section names of the survey.
+        survey의 section 이름들을 가져온다.
 
         Args:
-            survey_path (str): The path to the survey TeX file.
+            survey_path (str): survey TeX 파일 경로.
 
         Returns:
-            List[str]: A list of section content strings.
+            List[str]: section 내용 문자열 리스트.
         """
         tex = open(survey_path, "r").read()
         pattern = r"\\section{"
@@ -542,7 +543,7 @@ class LatexBaseTableBuilder:
         return res
 
     def save_table_file(self, latex_code, output_file):
-        # Save the LaTeX code to a .tex file
+        # LaTeX 코드를 .tex 파일로 저장
         with open(output_file, "w") as file:
             file.write(latex_code)
 
@@ -557,10 +558,10 @@ class LatexBaseTableBuilder:
         )
         result = self.extract_and_convert(result)
         if result is not None:
-            caption = result.get("caption")  # 如果没有'caption'，返回 None
+            caption = result.get("caption")  # 'caption'이 없으면 None 반환
             introductory_sentence = result.get(
                 "introductory sentence"
-            )  # 如果没有'introductory sentence'，返回 None
+            )  # 'introductory sentence'가 없으면 None 반환
             return caption, introductory_sentence
         return None, None
 
@@ -576,20 +577,20 @@ class LatexBaseTableBuilder:
             if "-" in element:
                 count += 1
 
-        # 判断是否超过列表长度的一半
+        # 리스트 길이의 절반을 넘는지 판단
         if count > len(data) / 2:
             return 0
         return 1
 
     def format_string(self, s):
-        if not s:  # 如果是空字符串或None，直接返回
+        if not s:  # 빈 문자열이거나 None이면 그대로 반환
             return s
         words = s.split(" ")
         formatted_words = []
         for word in words:
-            if len(word) == 2:  # 如果单词仅由两个字母组成，将其全部大写
+            if len(word) == 2:  # 단어가 두 글자로만 이루어져 있으면 전부 대문자로 변환
                 formatted_word = word.upper()
-            elif "-" in word:  # 处理包含连字符的单词
+            elif "-" in word:  # 하이픈이 포함된 단어 처리
                 parts = word.split("-")
                 formatted_word = "-".join([parts[0].capitalize()] + parts[1:])
             else:
@@ -599,37 +600,37 @@ class LatexBaseTableBuilder:
 
     def calculate_similarity(self, list_of_strings, threshold=0.7):
         """
-        计算字符串列表的相似度指标，并跳过异常值。
+        문자열 리스트의 유사도 지표를 계산한다. 이상치는 건너뛴다.
 
         Args:
-            list_of_strings (list): 字符串列表，每个元素是一个字符串。
-            threshold (float): 相似度阈值，高于此值认为是高相似度。
+            list_of_strings (list): 각 원소가 문자열인 리스트.
+            threshold (float): 유사도 임계값. 이 값보다 크면 높은 유사도로 간주한다.
 
         Returns:
-            int: 高相似度字符串对的数量。
-            float: 相似度指标（归一化）。
+            int: 유사도가 높은 문자열 쌍의 개수.
+            float: 유사도 지표(정규화 값).
         """
 
         def preprocess(s):
-            """预处理字符串：排序单词，转换为小写"""
+            """문자열 전처리: 단어를 정렬하고 소문자로 변환한다"""
             return " ".join(sorted(s.lower().split()))
 
         def similarity(s1, s2):
-            """计算两个字符串的相似度（基于SequenceMatcher）"""
+            """두 문자열의 유사도를 계산한다(SequenceMatcher 기반)"""
             return SequenceMatcher(None, s1, s2).ratio()
 
         def is_valid(s):
-            """判断字符串是否为有效值（排除异常值）"""
-            # 异常值定义：仅由标点符号组成或为空
+            """문자열이 유효한 값인지 판단한다(이상치 제외)"""
+            # 이상치 정의: 문장부호로만 이루어졌거나 비어 있는 경우
             return bool(s.strip()) and not re.fullmatch(r"[-_.]+", s.strip())
 
-        # 过滤无效字符串（跳过异常值）
+        # 유효하지 않은 문자열 필터링(이상치 건너뜀)
         filtered_strings = [s for s in list_of_strings if is_valid(s)]
 
-        # 预处理字符串
+        # 문자열 전처리
         processed_strings = [preprocess(s) for s in filtered_strings]
 
-        # 计算两两组合的相似度
+        # 두 개씩 조합해 유사도 계산
         high_similarity_pairs = 0
         total_pairs = 0
         for s1, s2 in combinations(processed_strings, 2):
@@ -637,40 +638,40 @@ class LatexBaseTableBuilder:
             if similarity(s1, s2) >= threshold:
                 high_similarity_pairs += 1
 
-        # 相似度指标
+        # 유사도 지표
         similarity_score = high_similarity_pairs / total_pairs if total_pairs > 0 else 0
         return similarity_score
 
     def convert_to_number(self, number_str):
         """
-        Convert a number string, e.g., "10000000" or "1,000,000", to an integer.
+        "10000000" 또는 "1,000,000" 같은 숫자 문자열을 정수로 변환한다.
 
         Args:
-            number_str (str): The string representation of the number.
+            number_str (str): 숫자의 문자열 표현.
 
         Returns:
-            int: The integer value of the number.
+            int: 변환된 정수 값.
         """
         try:
-            # Remove any commas in the string
+            # 문자열에서 쉼표 제거
             cleaned_str = number_str.replace(",", "")
-            # Convert the cleaned string to an integer
+            # 정리된 문자열을 정수로 변환
             return int(cleaned_str)
         except ValueError:
             return None
 
     def parse_outline(self, data):
-        # 初始化两个列表
+        # 두 개의 리스트 초기화
         section_titles = []
         subsection_titles = []
 
-        # 遍历sections提取标题
+        # section들을 순회하며 제목 추출
         for section in data["sections"]:
-            # 提取section title
+            # section title 추출
             if "section title" in section:
                 section_titles.append(section["section title"])
 
-            # 提取subsection title
+            # subsection title 추출
             if "subsections" in section:
                 for subsection in section["subsections"]:
                     if "subsection title" in subsection:
@@ -679,7 +680,7 @@ class LatexBaseTableBuilder:
 
     def get_sections(self, survey_path: str) -> List[str]:
         """
-        Get the section names of the survey.
+        survey의 section 이름들을 가져온다.
         """
         tex = open(survey_path, "r").read()
         pattern = r"\\section{"
@@ -692,7 +693,7 @@ class LatexBaseTableBuilder:
 
     def get_title(self, section: str) -> str:
         """
-        Get the title of the section.
+        section의 제목을 가져온다.
         """
         title = re.findall(r"\\section\{([^}]+)\}", section)[0]
         return title

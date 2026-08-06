@@ -6,8 +6,8 @@ import requests
 
 
 MODEL = "gpt-4o-mini"
-URL = "your url here" # e.g. "https://api.openai.com/v1/chat/completions"
-TOKEN = "your key here" # e.g. "sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+URL = "your url here" # 예: "https://api.openai.com/v1/chat/completions"
+TOKEN = "your key here" # 예: "sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 
 
 def remote_chat(
@@ -15,10 +15,10 @@ def remote_chat(
     temperature: float = 0.5,
     debug: bool = False,
 ) -> str:
-    """chat with remote LLM, return result."""
+    """원격 LLM과 대화하고 결과를 반환한다."""
     url = URL
     header = {"Content-Type": "application/json", "Authorization": f"Bearer {TOKEN}"}
-    # text content
+    # 텍스트 콘텐츠
     messages = [{"role": "user", "content": text_content}]
     payload = {"model": MODEL, "messages": messages, "temperature": temperature}
 

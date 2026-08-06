@@ -50,14 +50,14 @@ class LatexSummaryTableBuilder(LatexBaseTableBuilder):
     def find_method_section(self) -> str:
         outlines = load_single_file(self.outline_path)
         section_titles, subsection_titles = self.parse_outline(outlines)
-        ans = None  # 用于保存符合条件的元素
+        ans = None  # 조건을 만족하는 원소를 저장
         for section_title in section_titles:
             if (
                 "method" in section_title.lower()
                 or "technique" in section_title.lower()
             ):
                 ans = section_title
-                break  # 满足条件，退出循环
+                break  # 조건을 만족하므로 루프 종료
         if ans == None:
             prompt = load_prompt(
                 f"{BASE_DIR}/resources/LLM/prompts/latex_table_builder/find_method_section.md",
@@ -83,7 +83,7 @@ class LatexSummaryTableBuilder(LatexBaseTableBuilder):
 
     def generate_method_table(self, section_name: str):
         """
-        The main function to generate the table.
+        표를 생성하는 메인 함수.
         """
         order = 0
         section_content = self.extract_section_content(
@@ -155,12 +155,12 @@ class LatexSummaryTableBuilder(LatexBaseTableBuilder):
     ):
         """
         Args:
-            context: The context corresponding to the section that needs to be summarized in a table
-            content: The content of the methods introduced in the paper.
-            title: The name of the paper file
-            method_name: The name of the method introduced in the paper.
-            abbr: The abbreviation of the method.
-            bib_name: The bib_name of the paper.
+            context: 표로 요약해야 하는 section에 대응하는 문맥.
+            content: 논문에서 소개된 method의 내용.
+            title: 논문 파일 이름.
+            method_name: 논문에서 소개된 method 이름.
+            abbr: method의 약어.
+            bib_name: 논문의 bib_name.
         """
 
         exist_attribute = load_single_file(self.exist_attribute_path)
@@ -192,31 +192,31 @@ class LatexSummaryTableBuilder(LatexBaseTableBuilder):
 
     def generate_method_table_latex(self, data):
         """
-        Generate LaTeX codes of the table based on the data.
+        데이터를 기반으로 표의 LaTeX 코드를 생성한다.
         """
         latex_code = "\\begin{table}[htbp]\n\\centering\n\\resizebox{\\textwidth}{!}{ %\n\\begin{tabular}{p{0.65\\textwidth} p{0.47\\textwidth} p{0.5\\textwidth}}\n\\toprule\n"
         latex_code += "\\texfbf{Category} & \\texfbf{Feature} & \\texfbf{Method} \\\\\n\\midrule\n"
-        # Iterate over each category
+        # 각 카테고리 순회
         for idx, (category, features, methods) in enumerate(
             zip(data["Category"], data["Feature"], data["Method"])
         ):
-            row_span = len(features)  # Calculate the row span needed for the category
+            row_span = len(features)  # 해당 카테고리에 필요한 행 병합 수 계산
 
-            # Bold the category and features
-            category_bold = f"\\textbf{{{category}}}"  # Bold the category
-            features_bold = [f"{feature}" for feature in features]  # Bold the features
+            # 카테고리와 feature를 굵게 표시
+            category_bold = f"\\textbf{{{category}}}"  # 카테고리를 굵게 표시
+            features_bold = [f"{feature}" for feature in features]  # feature를 굵게 표시
 
-            # Add the category with row spanning and centering
+            # 행 병합과 가운데 정렬을 적용해 카테고리 추가
             if row_span > 1:
                 latex_code += f"\\multirow{{{row_span}}}{{*}}{{\\centering {category_bold}}} & {features_bold[0]} & {', '.join(methods[0])} \\\\\n"
             else:
                 latex_code += f"{category_bold} & {features_bold[0]} & {', '.join(methods[0])} \\\\\n"
 
-            # Add the rest of the rows for features and methods (without category)
+            # 카테고리를 제외한 나머지 feature/method 행 추가
             for i in range(1, len(features)):
                 latex_code += f"& {features_bold[i]} & {', '.join(methods[i])} \\\\\n"
 
-            # Add a horizontal line between categories, except after the last category
+            # 카테고리 사이에 가로선 추가(마지막 카테고리 뒤는 제외)
             if idx < len(data["Category"]) - 1:
                 latex_code += "\\midrule\n"
 
@@ -226,7 +226,7 @@ class LatexSummaryTableBuilder(LatexBaseTableBuilder):
 
     def generate_method_table_file(self, section_content, section_mainbody):
         """
-        Use data to generate latex file for the table.
+        데이터를 사용해 표의 LaTeX 파일을 생성한다.
         """
         if section_mainbody == "":
             return
@@ -267,7 +267,7 @@ class LatexSummaryTableBuilder(LatexBaseTableBuilder):
             res = self.chat_agent.remote_chat(
                 text_content=prompt, model=ADVANCED_CHATAGENT_MODEL
             )
-            # Add introductory sentence
+            # 도입 문장 추가
             try:
                 revised_content = re.search(r"<Answer>(.*?)</Answer>", res, re.DOTALL)
                 if revised_content:
@@ -279,7 +279,7 @@ class LatexSummaryTableBuilder(LatexBaseTableBuilder):
                 return
             tex = tex.replace(section_mainbody, revised_content)
             save_result(tex, self.main_body_path)
-            # Add input\{summary_table}
+            # input\{summary_table} 추가
             tex = load_file_as_string(self.main_body_path)
             section_title = self.extract_section_title(section_content)
             tex = tex.replace(
@@ -292,7 +292,7 @@ class LatexSummaryTableBuilder(LatexBaseTableBuilder):
     @staticmethod
     def get_sections(survey_path: str) -> List[str]:
         """
-        Get the section names of the survey.
+        survey의 section 이름들을 가져온다.
         """
         tex = open(survey_path, "r").read()
         pattern = r"\\section{"
@@ -306,7 +306,7 @@ class LatexSummaryTableBuilder(LatexBaseTableBuilder):
     @staticmethod
     def get_title(section: str) -> str:
         """
-        Get the title of the section.
+        section의 제목을 가져온다.
         """
         title = re.findall(r"\\section\{([^}]+)\}", section)[0]
         return title

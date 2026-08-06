@@ -11,7 +11,7 @@ from tqdm import tqdm
 
 FILE_PATH = Path(__file__).absolute()
 BASE_DIR = FILE_PATH.parent.parent.parent.parent
-sys.path.insert(0, str(BASE_DIR))  # run code in any path
+sys.path.insert(0, str(BASE_DIR))  # 어느 경로에서 실행해도 동작하도록 설정
 
 from src.configs.config import ADVANCED_CHATAGENT_MODEL
 from src.configs.constants import OUTPUT_DIR
@@ -37,7 +37,7 @@ class OutlinesGenerator(Base):
         self.papers = self.load_papers(self.paper_path)
 
     def load_papers(self, paper_dir: Path) -> list[dict]:
-        """Concatenate all the attri trees."""
+        """모든 attribute tree를 불러와 이어 붙인다."""
         papers = load_papers(paper_dir_path_or_papers=paper_dir)
         return papers
 
@@ -71,8 +71,8 @@ class OutlinesGenerator(Base):
         retry=retry_if_exception_type(json.JSONDecodeError),
     )
     def gen_outline_sections(self, chat_agent: ChatAgent) -> dict:
-        """Get outlines from gpt using prompt;
-        Extract answer from the response.
+        """프롬프트를 사용해 LLM에서 outline을 생성하고,
+        응답에서 답변을 추출한다.
         """
         prompt = load_prompt(
             f"{BASE_DIR}/resources/LLM/prompts/outline_generator/write_primary_outline.md",
@@ -143,7 +143,7 @@ class OutlinesGenerator(Base):
         time_monitor = TimeMonitor(self.task_id)
         time_monitor.start("generate outline")
 
-        # ________ 1. Generate plain outline. ____________
+        # ________ 1. 1차(대분류) outline 생성 ____________
         plain_outline_dic = self.gen_outline_sections(chat_agent=chat)
         for i, section in enumerate(plain_outline_dic["sections"]):
             plain_outline_dic["sections"][i]["subsections"] = []
@@ -151,7 +151,7 @@ class OutlinesGenerator(Base):
         plain_outline = Outlines.from_dict(plain_outline_dic)
         logger.debug(f"generate plain outline: \n{str(plain_outline)}")
 
-        # ________ 2. Mount papers on outline. ________________________
+        # ________ 2. 논문을 outline에 매핑 ________________________
         papers = self.load_papers(self.paper_path)
         prompts = []
         for paper in papers:
@@ -188,7 +188,7 @@ class OutlinesGenerator(Base):
             mount_fig_save_path.parent.mkdir(exist_ok=True, parents=True)
         self.draw_mount_details(mount_l, mount_fig_save_path)
 
-        # ________ 3. generate secondary outline. ___________________________
+        # ________ 3. 2차(소분류) outline 생성 ___________________________
         secondary_outline = copy.deepcopy(plain_outline)
         clue_record = {}
         for mount in mount_l:
@@ -214,7 +214,7 @@ class OutlinesGenerator(Base):
             )
             secondary_outline.sections[i] = self._write_secondary_outline(prompt, chat)
 
-        # __________ 4. Deduplicate the subsections ___________
+        # __________ 4. subsection 중복 제거 ___________
         subsections = []
         for section in secondary_outline.sections:
             for subsection in section.sub:
@@ -234,7 +234,7 @@ class OutlinesGenerator(Base):
             deduplicate_prompt, model=ADVANCED_CHATAGENT_MODEL
         )
 
-        # __________ 5. Reorganize outlines ___________
+        # __________ 5. outline 재구성 ___________
         reorganize_prompt = load_prompt(
             Path(BASE_DIR)
             / "resources"

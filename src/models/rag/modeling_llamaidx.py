@@ -1,7 +1,7 @@
 """
 @Reference:
-1. llamaindex rag query: https://www.lmodel.net/zh-cn/llama-index/rag-query
-2. llamaindex rag splitter: https://www.atyun.com/59025.html
+1. llamaindex RAG 쿼리: https://www.lmodel.net/zh-cn/llama-index/rag-query
+2. llamaindex RAG 스플리터: https://www.atyun.com/59025.html
 """
 
 import json
@@ -72,7 +72,7 @@ class LlamaIndexWrapper(object):
     Api_base = REMOTE_URL
 
     def __init__(self, embed_model: str = None, llm_model: str = None):
-        # bge-base embedding model
+        # bge-base 임베딩 모델
         if embed_model is None:
             try:
                 Settings.embed_model = HuggingFaceEmbedding(
@@ -93,7 +93,7 @@ class LlamaIndexWrapper(object):
         self.query_engine = None
         self.vector_index_dir = Path(f"{OUTPUT_DIR}/vector_indexes")
 
-        # splitter
+        # 스플리터
         self.splitter_type = DEFAULT_SPLITTER_TYPE
         self.split_parser = None
         self.splitter_window_size = SPLITTER_WINDOW_SIZE
@@ -118,11 +118,11 @@ class LlamaIndexWrapper(object):
     def init_split_parser(self):
         if self.splitter_type == "sentence":
             self.split_parser = SentenceWindowNodeParser.from_defaults(
-                # how many sentences on either side to capture
+                # 앞뒤로 몇 문장까지 포함할지
                 window_size=self.splitter_window_size,
-                # the metadata key that holds the window of surrounding sentences
+                # 주변 문장 윈도우를 담는 메타데이터 키
                 window_metadata_key="window",
-                # the metadata key that holds the original sentence
+                # 원본 문장을 담는 메타데이터 키
                 original_text_metadata_key="original_sentence",
             )
         elif self.splitter_type == "semantic":
@@ -173,7 +173,7 @@ class LlamaIndexWrapper(object):
         end_time = datetime.now()
         elapsed_time = end_time - start_time
 
-        # 提取时、分、秒
+        # 시, 분, 초 추출
         hours, remainder = divmod(elapsed_time.total_seconds(), 3600)
         minutes, seconds = divmod(remainder, 60)
 

@@ -7,7 +7,7 @@ import traceback
 
 FILE_PATH = Path(__file__).absolute()
 BASE_DIR = FILE_PATH.parent.parent.parent.parent
-sys.path.insert(0, str(BASE_DIR))  # run code in any path
+sys.path.insert(0, str(BASE_DIR))  # 어느 경로에서 실행해도 동작하도록 설정
 
 import requests
 
@@ -71,7 +71,7 @@ class FigRetriever(object):
     def retrieve_relevant_images(
         self, image_data_dict: dict, request_url: str = FIG_RETRIEVE_URL
     ):
-        # 开始时间
+        # 시작 시각
         start_time = datetime.now()
 
         response = requests.post(
@@ -113,20 +113,20 @@ class FigRetriever(object):
         else:
             raise NotImplemented()
 
-        # debug content
+        # 디버그 내용
         if self.is_debug:
             self.download_figs(figure_list)
 
-        # 结束时间
+        # 종료 시각
         end_time = datetime.now()
 
-        # 计算时间差
+        # 시간 차이 계산
         duration = end_time - start_time
         total_seconds = int(duration.total_seconds())
         hours, remainder = divmod(total_seconds, 3600)
         minutes, seconds = divmod(remainder, 60)
 
-        # 格式化输出时间
+        # 시간 출력 형식 지정
         logger.debug(
             f"Time taken for retrieve_relevant_images: {hours} hours, {minutes} minutes, {seconds} seconds"
         )
@@ -140,30 +140,30 @@ class FigRetriever(object):
     def download_figs(
         self, figure_list: list, figs_dir: Path = None, chunk_size: int = FIG_CHUNK_SIZE
     ):
-        # Define the directory to store images
+        # 이미지를 저장할 디렉터리 정의
         figs_dir = (
             os.path.join(self.fig_retrieve_debug_dir, "figs")
             if figs_dir is None
             else figs_dir
         )
 
-        # Create the directory if it doesn't exist
+        # 디렉터리가 없으면 생성
         os.makedirs(figs_dir, exist_ok=True)
 
         image_paths = []
-        # Loop through each image link and download the image
+        # 각 이미지 링크를 순회하며 이미지 다운로드
         for idx, one in enumerate(figure_list):
             try:
-                # Send a GET request to the image URL
+                # 이미지 URL로 GET 요청 전송
                 response = requests.get(one["figure_link"], stream=True)
-                response.raise_for_status()  # Raise an error for bad responses
+                response.raise_for_status()  # 응답이 실패면 예외 발생
 
-                # Define the path for saving the image
+                # 이미지 저장 경로 정의
                 image_path = os.path.join(
                     figs_dir, self.extract_fig_name(fig_link=one["figure_link"])
                 )
 
-                # Write the content of the response (image) to a file
+                # 응답 내용(이미지)을 파일로 기록
                 with open(image_path, "wb") as fw:
                     for chunk in response.iter_content(chunk_size=chunk_size):
                         fw.write(chunk)

@@ -21,7 +21,7 @@ class TimeMonitor(Base):
         self.record: Dict[str, Dict[str, float]] = {}
 
     def start(self, label: str) -> None:
-        """记录指定标签的开始时间（秒级时间戳）"""
+        """지정한 라벨의 시작 시각을 기록한다(초 단위 타임스탬프)"""
         if not isinstance(label, str):
             raise TypeError(f"Label must be string, got {type(label).__name__}")
 
@@ -32,7 +32,7 @@ class TimeMonitor(Base):
         }
 
     def end(self, label: str) -> float:
-        """计算时间差并写入文件，返回持续时间（秒）"""
+        """시간 차이를 계산해 파일에 기록하고 지속 시간(초)을 반환한다"""
         if label not in self.record:
             raise KeyError(f"Label '{label}' not found in records")
 
@@ -40,7 +40,7 @@ class TimeMonitor(Base):
         start_time = datetime.strptime(record["start"], "%Y-%m-%d %H:%M:%S")
         end_time = datetime.now()
 
-        # 更新记录字段
+        # 기록 필드 갱신
         record["end"] = end_time.strftime("%Y-%m-%d %H:%M:%S")
         record["duration"] = round((end_time - start_time).total_seconds(), 2)
 
@@ -48,18 +48,18 @@ class TimeMonitor(Base):
         return record["duration"]
 
     def _save_record(self, label: str) -> None:
-        """原子化写入操作，追加模式保存数据"""
+        """원자적 쓰기 연산. 추가(append) 모드로 데이터를 저장한다"""
         try:
-            # 读取现有记录
+            # 기존 기록 읽기
             existing = {}
             if self.record_file.exists():
                 with open(self.record_file, "r") as f:
                     existing = json.load(f)
 
-            # 合并数据（保留历史记录）
+            # 데이터 병합(과거 기록 유지)
             existing[label] = self.record[label]
 
-            # 原子化写入
+            # 원자적 쓰기
             with open(self.record_file, "w") as f:
                 json.dump(existing, f, indent=4)
 

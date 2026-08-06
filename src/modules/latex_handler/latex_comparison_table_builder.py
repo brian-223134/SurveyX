@@ -44,14 +44,14 @@ class LatexComparisonTableBuilder(LatexBaseTableBuilder):
     def find_method_section(self) -> str:
         outlines = load_single_file(self.outline_path)
         section_titles, subsection_titles = self.parse_outline(outlines)
-        ans = None  # 用于保存符合条件的元素
+        ans = None  # 조건을 만족하는 원소를 저장
         for section_title in section_titles:
             if (
                 "method" in section_title.lower()
                 or "technique" in section_title.lower()
             ):
                 ans = section_title
-                break  # 满足条件，退出循环
+                break  # 조건을 만족하므로 루프 종료
         if ans == None:
             prompt = load_prompt(
                 f"{BASE_DIR}/resources/LLM/prompts/latex_table_builder/find_method_section.md",
@@ -125,7 +125,7 @@ class LatexComparisonTableBuilder(LatexBaseTableBuilder):
             res = self.chat_agent.remote_chat(
                 text_content=prompt, model=ADVANCED_CHATAGENT_MODEL
             )
-            # Add introductory sentence
+            # 도입 문장 추가
             try:
                 revised_content = re.search(r"<Answer>(.*?)</Answer>", res, re.DOTALL)
                 if revised_content:
@@ -142,7 +142,7 @@ class LatexComparisonTableBuilder(LatexBaseTableBuilder):
             else:
                 tex = tex.replace(section_mainbody, revised_content)
             save_result(tex, self.main_body_path)
-            # Add input\{comparison_table}
+            # input\{comparison_table} 추가
             tex = load_file_as_string(self.main_body_path)
             section_content = self.extract_section_content(
                 self.main_body_path, section_name
@@ -157,26 +157,26 @@ class LatexComparisonTableBuilder(LatexBaseTableBuilder):
             )
 
     def generate_comparison_table_latex(self, data):
-        # 提取公共属性和方法
+        # 공통 속성과 method 추출
         common_attributes = data["common_attributes"]
         methods = data["methods"]
         methods = dict(list(methods.items())[:3])
 
-        # LaTeX 表格头部
+        # LaTeX 표 헤더
         latex_code = "\\begin{table}[ht]\n\\centering\n"
-        latex_code += "\\resizebox{\\textwidth}{!}{%\n"  # 开始缩放
+        latex_code += "\\resizebox{\\textwidth}{!}{%\n"  # 스케일 조정 시작
         latex_code += "\\begin{tabular}{l" + "c" * len(methods) + "}\n\\toprule\n"
 
-        # 填写方法标题行
+        # method 제목 행 채우기
         method_titles = "\\textbf{{Feature}}"
         for method in methods.keys():
             method_titles += f" & \\textbf{{{method}}}"
         method_titles += " \\\\\n\\midrule\n"
         latex_code += method_titles
 
-        # 填写每个公共属性的行
+        # 각 공통 속성 행 채우기
         for attribute in common_attributes:
-            row = f"\\textbf{{{attribute}}}"  # 加粗属性名称
+            row = f"\\textbf{{{attribute}}}"  # 속성 이름을 굵게 표시
             for method in methods.keys():
                 formatted_attribute = self.format_string(
                     methods[method].get(attribute, "N/A")
@@ -191,7 +191,7 @@ class LatexComparisonTableBuilder(LatexBaseTableBuilder):
                     f'Row "{row}" has too many unexpected tokens, it has been removed from comparison table.'
                 )
 
-        # 结束表格
+        # 표 종료
         latex_code += "\\bottomrule\n\\end{tabular}}\n\\caption{Comparison of different Methods}\n\\label{tab:comparison_table}\n\\end{table}"
         return latex_code
         # # Save the LaTeX code to a .tex file
@@ -202,7 +202,7 @@ class LatexComparisonTableBuilder(LatexBaseTableBuilder):
     @staticmethod
     def get_sections(survey_path: str) -> List[str]:
         """
-        Get the section names of the survey.
+        survey의 section 이름들을 가져온다.
         """
         tex = open(survey_path, "r").read()
         pattern = r"\\section{"
@@ -216,7 +216,7 @@ class LatexComparisonTableBuilder(LatexBaseTableBuilder):
     @staticmethod
     def get_title(section: str) -> str:
         """
-        Get the title of the section.
+        section의 제목을 가져온다.
         """
         title = re.findall(r"\\section\{([^}]+)\}", section)[0]
         return title

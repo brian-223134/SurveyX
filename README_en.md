@@ -2,7 +2,7 @@
 
 <p align="center">
   <i>
-✨ 欢迎来到SurveyX！一个自动化的学术调查生成引擎，使您能够在短短一个小时内生成高质量的学术综述论文，从而快速了解某一领域！📚
+✨Welcome to SurveyX! If you want to experience the full features, please log in to our website. This open-source code only provides offline processing capabilities.✨
   </i>
   <br>
   <a href="https://arxiv.org/abs/2502.14776">
@@ -20,52 +20,108 @@
     <img src="https://img.shields.io/github/last-commit/IAAR-Shanghai/SurveyX?display_timestamp=author&style=flat&color=green" alt="last commit">
   </a>
   <br>
-  <a href="https://discord.gg/gyDaySyktW">
-    <img src="https://img.shields.io/discord/1346729313134710817?logo=discord&label=Discord&color=5865f1&style=flat" alt="discord channel">
-  </a>
   <a href="https://github.com/IAAR-Shanghai/SurveyX/blob/main/assets/user_groups_123.jpg">
     <img src="https://img.shields.io/badge/Wechat-Group-07c160?style=flat&logo=wechat" alt="Wechat Group">
   </a>
 </p>
 
-经过一段时间的紧张开发，SurveyX 的第一个用户界面版本现已上线！🎉
-我们热情邀请您试用。不要错过！🔥
-
 <div align="center">
-  👉 <strong><a href="https://surveyx.cn/">访问 SurveyX</a></strong> 👈
+    <strong><a>If you find our work helpful, don't forget to give us a star! ⭐️</a></strong>
+    <br>
+  👉 <strong><a href="https://surveyx.cn/">Visit SurveyX</a></strong> 👈
 </div>
 
-## 📄如何使用SurveyX？
+\[[한국어](README.md) | English\]
 
-1. 访问 **[SurveyX](https://www.surveyx.cn)** 🌐
-2. 使用您的邮箱注册 📧
-3. 提交您的**主题**和**关键词**（主题是您希望生成的主题，关键词用于在线检索）🔍
-4. 坐下来放松一下，您的结果正在生成；完成后您将收到邮件通知！📬
-5. 我们重视您的反馈，如果您有任何建议，请随时与我们分享您的想法。📝 [问卷星](https://www.wjx.cn/vm/QNAHWs6.aspx)、[Google Forms](https://forms.gle/m1tDKEu4ed7mN3dh7)或[我们的微信群](assets/user_groups_123.jpg)！
-
-## 🤔 什么是SurveyX？
+## 🤔What is SurveyX?
 
 ![surveyx_frame](assets/SurveyX.png)
 
-**SurveyX** 是一个先进的学术综述论文自动生成系统，利用大型语言模型（LLMs）生成高质量、领域特定的学术论文综述。🚀
+**SurveyX** is an advanced academic survey automation system that leverages the power of Large Language Models (LLMs) to generate high-quality, domain-specific academic papers and surveys. By simply providing a paper title and keywords for literature retrieval, users can request comprehensive academic papers or surveys tailored to specific topics.
 
-只需提供 **论文标题** 和 **关键词** 进行文献检索，用户就可以请求针对特定主题的综合学术综述论文。
+---
 
-如果您想了解SurveyX的工作原理或想了解更多关于底层技术和方法，请访问我们的 📑[网站](http://www.surveyx.cn) 以了解更多。
+## 🆚 Full Version vs. Offline Open Source Version
 
-## 🛠️ 反馈
+The open-source code in this repository only provides offline processing capabilities. If you want to experience the full features, please log in to [our website](https://www.surveyx.cn).
 
-我们重视您的反馈！如有任何问题或建议，请随时与我们联系。感谢您的支持！❤️ 立即加入我们的微信天使用户群！🚀 扫描下方二维码，与我们一起塑造未来！💡
+**Missing features in the open-source version:**
+1. **Real-time online search:** You can only generate surveys based on your own uploaded `.md` format references. The open-source version lacks access to our paper database, web crawler system, keyword expansion algorithms, and dual-layer semantic filtering for literature acquisition.
+2. **Multimodal document parsing:** The generated survey will not include image understanding or illustrations from the references.
 
-<div align="center">
-  <img src="assets/user_groups_123.jpg" alt="Wechat Group" width="300" />
-</div>
+---
 
-## 📝 已生成的主题
+## 🛠️ How to Use the Offline Open Source Version (This repo)
 
-![many_papers](assets/many_papers.png)
+### 1. Prerequisites
 
-### 示例论文
+- Python 3.10+ (Anaconda recommended)
+- All Python dependencies in `requirements.txt`
+- LaTeX environment (for PDF compilation):
+- You need to convert all your reference documents to Markdown (`.md`) format and put them together in a single folder before running the pipeline.
+
+```bash
+sudo apt update && sudo apt install texlive-full
+```
+
+### 2. Installation
+
+1. Clone the repository:
+```bash
+git clone https://github.com/IAAR-Shanghai/SurveyX.git
+cd SurveyX
+```
+
+2. Install Python dependencies:
+```bash
+pip install -r requirements.txt
+```
+
+### 3. LLM Configuration
+
+Edit `src/configs/config.py` to provide your LLM API URL, token, and model information before running the pipeline.
+
+Example:
+```python
+REMOTE_URL = "https://api.openai.com/v1/chat/completions"
+TOKEN = "sk-xxxx..."
+DEFAULT_EMBED_ONLINE_MODEL = "BAAI/bge-base-en-v1.5"
+EMBED_REMOTE_URL = "https://api.siliconflow.cn/v1/embeddings"
+EMBED_TOKEN = "your embed token here"
+```
+
+### 4. Workflow
+
+
+Each run creates a unique result folder under `outputs/`, named by the task id `outputs/<task_id>` (e.g., `outputs/2025-06-18-0935_keyword/`).
+
+Run the full pipeline:
+```bash
+python tasks/offline_run.py --title "Your Survey Title" --key_words "keyword1, keyword2, ..." --ref_path "path/to/your/reference/dir"
+```
+
+Or run step by step:
+```bash
+export task_id="your_task_id"
+python tasks/workflow/03_gen_outlines.py --task_id $task_id
+python tasks/workflow/04_gen_content.py --task_id $task_id
+python tasks/workflow/05_post_refine.py --task_id $task_id
+python tasks/workflow/06_gen_latex.py --task_id $task_id
+```
+
+**Note:** Your local reference documents **must be in Markdown (`.md`) format** and placed in a single directory.
+
+### 5. Output
+
+- All results are saved under `outputs/<task_id>/`
+  - `survey.pdf`: Final compiled survey
+  - `outlines.json`: Generated outline
+  - `latex/`: LaTeX sources
+  - `tmp/`: Intermediate files
+
+---
+
+## Example Papers
 
 | Title                                                        | Keywords                                                     |
 | ------------------------------------------------------------ | ------------------------------------------------------------ |
@@ -103,11 +159,11 @@
 | [IoT Network Protocols: A Comparative Study of LoRaWAN, NB-IoT, and Thread](examples/Networking_and_Internet_Architecture/LPWAN.pdf) | LPWAN, LoRa, ZigBee 3.0, 6LoWPAN, TDMA scheduling, RPL routing, device density management |
 | [Edge Caching in Content Delivery Networks: Algorithms and Economic Incentives](examples/Networking_and_Internet_Architecture/CDN.pdf) | CDN, Akamai, cache replacement policies, DASH (Dynamic Adaptive Streaming), QoE optimization, edge server placement, bandwidth cost reduction |
 | [A survey on  flow batteries](examples/Other/battery.pdf)    | battery electrolyte formulation                              |
-| [Research on battery electrolyte formulation](examples/Other/flow_battery.pdf) | flow batteries  |
+| [Research on battery electrolyte formulation](examples/Other/flow_battery.pdf) | flow batteries                                               |
 
-## 📃 引用SurveyX
+## 📃Citing SurveyX
 
-如果这个项目对您的项目/论文有帮助，请引用我们：
+Please cite us if you find this project helpful for your project/paper:
 
 ```plain text
 @misc{liang2025surveyxacademicsurveyautomation,
@@ -123,12 +179,18 @@
 
 <hr style="border: 1px solid #ecf0f1;">
 
-## ⚠️ 注意
 
-- 我们的检索引擎可能无法访问许多需要商业许可的论文。如果您的研究主题需要来自非arXiv来源的论文，由于检索范围的限制，生成论文的质量和全面性可能会受到影响。
-- 目前我们仅支持生成英语学术综述论文。其他语言的支持仍在开发中，会在不久的将来上线！
-- 为了确保所有用户的公平访问，每个用户每天重复（或多次）提交的issue将会被忽略，优先满足多样化用户需求。
+## Open Source Version Notice
+This open source version of Surveyx is a simplified edition. It relies entirely on user-provided local reference documents and does not include advanced features such as:
+- Keyword expansion and filtering algorithms
+- Multimodal image parsing or figure extraction
+- Online reference search or automatic data fetching
 
-## ⚠️ 免责声明
+These advanced modules are only available in the full version of Surveyx, which is hosted by MemTensor (Shanghai) Technology Co., Ltd. If you would like to experience the complete features, please visit our official website: [surveyx.cn](https://surveyx.cn)
 
-SurveyX使用先进的语言模型协助生成学术论文。然而，请注意生成的内容仅作为研究辅助工具。用户应验证生成论文的准确性，因为SurveyX无法保证完全符合学术标准。
+For questions or issues, please open an issue on the repository.
+
+## ⚠️ Disclaimer
+
+SurveyX uses advanced language models to assist with the generation of academic papers. However, it is important to note that the generated content is a tool for research assistance. Users should verify the accuracy of the generated papers, as SurveyX cannot guarantee full compliance with academic standards.
+

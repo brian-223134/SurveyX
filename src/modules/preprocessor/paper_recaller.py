@@ -23,7 +23,7 @@ logger = get_logger("src.modules.preprocessor.PaperRecaller")
 
 class PaperRecaller:
     """
-    Class to iteratively recall and process papers based on evolving keywords.
+    진화하는 키워드를 기반으로 논문을 반복적으로 리콜하고 처리하는 클래스.
     """
 
     def __init__(
@@ -35,12 +35,12 @@ class PaperRecaller:
         chat_agent: ChatAgent = None,
     ):
         """
-        Initialize the PaperRecaller.
+        PaperRecaller를 초기화한다.
 
         Args:
-            key_word_pool (List[str]): initial key word pool.
-            iteration_limit (int): Maximum number of iterations.
-            paper_pool_limit (int): Maximum number of papers to maintain in the pool.
+            key_word_pool (List[str]): 초기 키워드 풀.
+            iteration_limit (int): 최대 반복 횟수.
+            paper_pool_limit (int): 풀에 유지할 최대 논문 수.
         """
 
         self.iteration_limit = iteration_limit
@@ -65,13 +65,13 @@ class PaperRecaller:
         self, keyword: str, page: str, time_s: str, time_e: str
     ) -> List[Dict]:
         """
-        Search for papers using Google Scholar and arXiv.
+        Google Scholar와 arXiv에서 논문을 검색한다.
 
         Args:
-            keyword (str): The keyword to search for.
+            keyword (str): 검색할 키워드.
 
         Returns:
-            List[Dict]: A list of paper dictionaries.
+            List[Dict]: 논문 딕셔너리 리스트.
         """
         logger.debug(
             f"Searching papers on google: key word={keyword}, page={page}, time_s={time_s}, time_e={time_e}."
@@ -89,19 +89,19 @@ class PaperRecaller:
 
     def _clean_paper_pool(self, new_papers: List[Dict]):
         """
-        Clean the paper pool by removing invalid entries and deduplicating.
+        유효하지 않은 항목을 제거하고 중복을 없애 논문 풀을 정리한다.
 
         Args:
-            new_papers (List[Dict]): Newly retrieved papers to add.
+            new_papers (List[Dict]): 새로 가져온 논문들.
         """
         logger.debug("Cleaning and deduplicating paper pool.")
 
-        # Filter out papers
+        # 논문 필터링
         dc = DataCleaner(new_papers)
         valid_papers = dc.quick_check()
         logger.debug(f"Papers after filtering empty fields: {len(valid_papers)}")
 
-        # Deduplicate based on _id
+        # _id 기준으로 중복 제거
         existing_ids = {paper["_id"] for paper in self.paper_pool}
         unique_papers = [
             paper for paper in valid_papers if paper["_id"] not in existing_ids
@@ -112,11 +112,11 @@ class PaperRecaller:
 
     def _embed_papers(self):
         """
-        Embed new papers that do not have embeddings.
+        임베딩이 없는 새 논문들을 임베딩한다.
         """
         logger.debug("Embedding new papers.")
 
-        # Identify papers without embeddings
+        # 임베딩이 없는 논문 식별
         new_papers = [paper for paper in self.paper_pool if "embedding" not in paper]
         logger.debug(f"Papers to embed: {len(new_papers)}")
 
@@ -124,18 +124,18 @@ class PaperRecaller:
             logger.debug("No new papers to embed.")
             return
 
-        # Extract abstracts for embedding
+        # 임베딩할 초록 추출
         texts = [
             ("Title: " + paper["title"] + "\nAbstract: " + paper["abstract"])
             for paper in new_papers
         ]
         embeddings = self.embed_agent.batch_local_embed(texts)
 
-        # Assign embeddings or remove papers with failed embeddings
+        # 임베딩을 할당하거나, 임베딩에 실패한 논문은 제거
         for paper, embedding in zip(new_papers, embeddings):
             if (
                 isinstance(embedding, list) and embedding
-            ):  # filter out "no response" and []
+            ):  # "no response"와 [] 걸러내기
                 paper["embedding"] = embedding
             else:
                 logger.warning(
@@ -145,14 +145,14 @@ class PaperRecaller:
 
     def _cluster_papers(self) -> List[List[Dict]]:
         """
-        Cluster papers based on their embeddings.
+        임베딩을 기준으로 논문을 클러스터링한다.
 
         Returns:
-            List[List[Dict]]: A list of clusters, each containing a list of papers.
+            List[List[Dict]]: 각 원소가 논문 리스트인 클러스터들의 리스트.
         """
         logger.debug("Clustering papers based on embeddings.")
 
-        # Prepare embedding matrix
+        # 임베딩 행렬 준비
         embeddings = np.array([paper["embedding"] for paper in self.paper_pool])
         if embeddings.size == 0:
             logger.warning("No embeddings available for clustering.")
@@ -161,11 +161,11 @@ class PaperRecaller:
         num_clusters = len(self.keyword_pool) + 1
         logger.debug(f"Number of clusters to form: {num_clusters}")
 
-        # Perform KMeans clustering
+        # KMeans 클러스터링 수행
         kmeans = KMeans(n_clusters=num_clusters, random_state=42)
         labels = kmeans.fit_predict(embeddings)
 
-        # Organize papers into clusters
+        # 논문을 클러스터별로 정리
         clusters = [[] for _ in range(num_clusters)]
         for label, paper in zip(labels, self.paper_pool):
             clusters[label].append(paper)
@@ -175,13 +175,13 @@ class PaperRecaller:
 
     def _generate_keywords(self, clusters: List[List[Dict]]) -> List[str]:
         """
-        Generate keywords from each cluster using ChatAgent.
+        ChatAgent를 사용해 각 클러스터에서 키워드를 생성한다.
 
         Args:
-            clusters (List[List[Dict]]): Clusters of papers.
+            clusters (List[List[Dict]]): 논문 클러스터들.
 
         Returns:
-            List[str]: Generated keywords.
+            List[str]: 생성된 키워드들.
         """
         logger.debug("Generating keywords from clusters.")
 
@@ -214,13 +214,13 @@ class PaperRecaller:
 
     def _select_new_keyword(self, generated_keywords: List[str]) -> str:
         """
-        Select the most appropriate new keyword to add from generated keywords.
+        생성된 키워드 중 추가하기에 가장 적절한 새 키워드를 선택한다.
 
         Args:
-            generated_keywords (List[str]): List of generated keywords.
+            generated_keywords (List[str]): 생성된 키워드 리스트.
 
         Returns:
-            str: The selected new keyword.
+            str: 선택된 새 키워드.
         """
         logger.debug("Selecting a new keyword from generated keywords.")
 
@@ -228,28 +228,28 @@ class PaperRecaller:
             logger.warning("No generated keywords to select from.")
             return ""
 
-        # Embed the generated keywords
+        # 생성된 키워드 임베딩
         keyword_embeddings = np.array(
             self.embed_agent.batch_local_embed(generated_keywords)
         ).astype(float)
 
-        # Calculate distances to existing keywords (return a cosine sim matrix given two sets of vectors)
+        # 기존 키워드들과의 거리 계산(두 벡터 집합에 대한 코사인 거리 행렬 반환)
         distances = cosine_distances(
             keyword_embeddings, self.existing_keyword_embeddings
         )
 
-        # Double the weight for the distance to the initial keyword.
+        # 최초 키워드(topic)와의 거리 가중치를 2배로 설정
         weights = np.ones(self.existing_keyword_embeddings.shape[0])
         weights[0] = 2
 
         avg_distances = np.average(distances, axis=1, weights=weights)
         max_distances = distances.max(axis=1)
 
-        # Rank based on weighted average distance (descending) and max distance (ascending)
+        # 가중 평균 거리(내림차순)와 최대 거리(오름차순)를 기준으로 순위 산정
         avg_rank = avg_distances.argsort()[::-1]
         max_rank = max_distances.argsort()
 
-        # Calculate average rank
+        # 평균 순위 계산
         combined_ranks = []
         for i in range(len(generated_keywords)):
             combined_rank = (
@@ -257,11 +257,11 @@ class PaperRecaller:
             ) / 2
             combined_ranks.append(combined_rank)
 
-        # Select the keyword with the smallest combined rank
+        # 합산 순위가 가장 작은 키워드 선택
         selected_index = np.argmin(combined_ranks)
         new_keyword = generated_keywords[selected_index]
 
-        # Embed and add to existing_keyword_embeddings
+        # 임베딩해 existing_keyword_embeddings에 추가
         new_embedding = keyword_embeddings[selected_index].reshape(1, -1)
         self.existing_keyword_embeddings = np.vstack(
             [self.existing_keyword_embeddings, new_embedding]
@@ -292,25 +292,25 @@ class PaperRecaller:
         self, key_word: str, page: str, time_s: str, time_e: str
     ):
         """
-        Perform iterative paper recall and processing.
+        반복적인 논문 리콜과 처리를 수행한다.
         """
         self.deal_init_keywords(key_word, 5, time_s, time_e)
 
         for iteration in range(1, self.iteration_limit + 1):
             logger.info(f"============= Iteration {iteration} ===============")
 
-            # Embed all papers
+            # 모든 논문 임베딩
             self._embed_papers()
 
-            # Cluster papers
+            # 논문 클러스터링
             clusters = self._cluster_papers()
             logger.info(f"Formed {len(clusters)} clusters.")
 
-            # Generate new keywords from clusters
+            # 클러스터에서 새 키워드 생성
             generated_keywords = self._generate_keywords(clusters)
             logger.info(f"Generated {len(generated_keywords)} keywords from clusters.")
 
-            # Select the most appropriate keyword to add
+            # 추가할 가장 적절한 키워드 선택
             new_keyword = self._select_new_keyword(generated_keywords)
             if new_keyword:
                 logger.info(f"Selected new keyword: '{new_keyword}'")
@@ -319,11 +319,11 @@ class PaperRecaller:
                 logger.warning("No suitable new keyword found. Stopping recalling.")
                 break
 
-            # Search for papers using the current keyword
+            # 현재 키워드로 논문 검색
             new_papers = self._search_papers(new_keyword, page, time_s, time_e)
             logger.info(f"Retrieved {len(new_papers)} new papers.")
 
-            # Clean and deduplicate the paper pool
+            # 논문 풀 정리 및 중복 제거
             self._clean_paper_pool(new_papers)
             logger.info(f"Paper pool size after cleaning: {len(self.paper_pool)}")
 
