@@ -1,6 +1,6 @@
 """
 @Reference:
-1. How to create llama index templates: https://blog.csdn.net/lovechris00/article/details/137782020
+1. llama index 템플릿 생성 방법: https://blog.csdn.net/lovechris00/article/details/137782020
 """
 
 import json
@@ -37,14 +37,14 @@ class RuleBasedRefiner(BaseRefiner):
             f"{OUTPUT_DIR}/{self.task_id}/tmp/mainbody_rule_refined.tex"
         )
 
-        # functions
+        # 함수
         self.abbr_replacer = AbbrReplacer()
         self.bib_name_replacer = BibNameReplacer(task_id=self.task_id)
         self.sp_phrases_to_be_rm = [
             "Certainly! Below is the rewritten content following your instructions:"
         ]
 
-        # replace rules to be executed
+        # 실행할 치환 규칙
         self.re_pattern_rm_tokens_1 = re.compile(
             pattern=r"\*\*.*?\*\*", flags=re.DOTALL
         )
@@ -52,7 +52,7 @@ class RuleBasedRefiner(BaseRefiner):
             pattern=r"Certainly!.*?following your instructions:", flags=re.DOTALL
         )
 
-        # 使用self.abbr_replacer.process会出现未知的重复bug，只能去掉
+        # self.abbr_replacer.process를 사용하면 원인 불명의 중복 버그가 발생해 제외함
         self.replace_rules = [
             # self.abbr_replacer.process,
             self.bib_name_replacer.process,
@@ -67,16 +67,16 @@ class RuleBasedRefiner(BaseRefiner):
     def remove_unexpected_tokens(self, content: str):
         for one in self.sp_phrases_to_be_rm:
             content = content.replace(one, "")
-        # remove LLM redundant words
+        # LLM이 만들어낸 불필요한 표현 제거
         content = re.sub(self.re_pattern_rm_tokens_1, "", content)
         content = re.sub(self.re_pattern_rm_tokens_2, "", content)
         return clean_chat_agent_format(content=content)
 
     def find_differences(self, str1, str2):
-        # 找出较短的字符串长度
+        # 더 짧은 문자열의 길이 구하기
         sents1 = str1.strip().split(".")
         sents2 = str2.strip().split(".")
-        # 比较两个字符串并记录差异
+        # 두 문자열을 비교해 차이를 기록
         differences = []
         for i, (sent_1, sent_2) in enumerate(zip(sents1, sents2)):
             if sent_1 != sent_2:
@@ -122,7 +122,7 @@ class RuleBasedRefiner(BaseRefiner):
 if __name__ == "__main__":
     task_id = load_latest_task_id()
     print(f"task_id: {task_id}")
-    # store vector index into local directory for the convenience of debugging
+    # 디버깅 편의를 위해 vector index를 로컬 디렉터리에 저장
     temp_rewriter = RuleBasedRefiner(task_id=task_id, llamaindex_store_local=False)
     mainbody_path = Path(f"{OUTPUT_DIR}/{task_id}/tmp/mainbody_fig_refined.tex")
     temp_rewriter.run(mainbody_path=mainbody_path, debug=True)

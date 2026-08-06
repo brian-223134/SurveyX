@@ -4,7 +4,7 @@ from pathlib import Path
 
 FILE_PATH = Path(__file__).absolute()
 BASE_DIR = FILE_PATH.parent.parent
-sys.path.insert(0, str(BASE_DIR))  # run code in any path
+sys.path.insert(0, str(BASE_DIR))  # 어느 경로에서 실행해도 동작하도록 설정
 
 from src.configs.config import BASE_DIR
 from src.configs.logger import get_logger
@@ -21,7 +21,7 @@ logger = get_logger("tasks.offline_run")
 
 def check_latexmk_installed():
     try:
-        # Try running the latexmk command with the --version option
+        # latexmk 명령을 --version 옵션으로 실행해 설치 여부 확인
         _ = subprocess.run(['latexmk', '--version'], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         logger.debug("latexmk is installed.")
         return True
@@ -35,27 +35,27 @@ def check_latexmk_installed():
 def offline_generate(task_id: str, ref_path: str):
     chat_agent = ChatAgent()
     
-    # preprocess references
+    # 참고문헌 전처리
     dc = DataCleaner()
     dc.offline_proc(task_id=task_id, ref_path=ref_path)
 
-    # generate outlines
+    # outline 생성
     outline_generator = OutlinesGenerator(task_id)
     outline_generator.run()
 
-    # generate survey
+    # survey 본문 생성
     content_generator = ContentGenerator(task_id=task_id)
     content_generator.run()
 
-    # post refine
+    # 사후 정제(post refine)
     post_refiner = PostRefiner(task_id=task_id, chat_agent=chat_agent)
     post_refiner.run()
 
-    # generate full survey
+    # 전체 survey 생성
     latex_generator = LatexGenerator(task_id=task_id)
     latex_generator.generate_full_survey()
 
-    # compile latex
+    # LaTeX 컴파일
     if check_latexmk_installed():
         logger.info(f"Start compiling with latexmk.")
         latex_generator.compile_single_survey()

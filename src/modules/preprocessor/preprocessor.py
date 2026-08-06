@@ -36,7 +36,7 @@ def single_preprocessing(args: ArgsNamespace) -> str:
     time_monitor = TimeMonitor(task_id=task_id)
     time_monitor.start("retrieve paper")
 
-    # 1. recall paper.
+    # 1. 논문 리콜
     recaller = PaperRecaller(
         topic=topic, enable_cache=args.enable_cache, chat_agent=chat
     )
@@ -48,7 +48,7 @@ def single_preprocessing(args: ArgsNamespace) -> str:
     )
     time_monitor.end("retrieve paper")
 
-    # 2. filter paper
+    # 2. 논문 필터링
     time_monitor.start("filter paper")
     chat.token_monitor = TokenMonitor(task_id, "filter paper")
     pf = PaperFilter(papers=recalled_papers, chat_agent=chat)
@@ -59,7 +59,7 @@ def single_preprocessing(args: ArgsNamespace) -> str:
     save_papers(filtered_papers, Path(f"{OUTPUT_DIR}/{str(task_id)}/jsons"))
     time_monitor.end("filter paper")
 
-    # 3. clean paper.
+    # 3. 논문 정제
     chat.token_monitor = TokenMonitor(task_id, "clean paper")
     dc = DataCleaner()
     dc.run(task_id=task_id, chat_agent=chat)

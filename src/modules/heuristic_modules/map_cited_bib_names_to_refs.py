@@ -15,10 +15,10 @@ class BibNameReplacer(object):
         self.ref_bibs = None
         self.task_id = task_id
 
-        # ======== settings ========
+        # ======== 설정 ========
         self.pattern_of_bib_name_in_paper = r"\\cite[t|p]*\{(.*?)\}"
         self.pattern_of_bib_name_in_references = (
-            r"@[\w\-]+\{([^,]+),"  # 匹配 @xxx{ 后面的内容直到第一个逗号
+            r"@[\w\-]+\{([^,]+),"  # @xxx{ 뒤부터 첫 번째 쉼표까지의 내용을 매칭
         )
         self.ref_file_path = Path(f"{OUTPUT_DIR}/{task_id}/latex/references.bib")
 
@@ -32,7 +32,7 @@ class BibNameReplacer(object):
         self.ref_bibs = bib_names
 
     def process(self, content: str):
-        # 先收集新的缩写对
+        # 새로운 약어 쌍을 먼저 수집
         bibs_in_content = re.findall(
             pattern=self.pattern_of_bib_name_in_paper, string=content
         )
@@ -51,7 +51,7 @@ class BibNameReplacer(object):
         return content
 
 
-# 示例使用
+# 사용 예시
 if __name__ == "__main__":
     task_id = load_latest_task_id()
     print(f"task_id: {task_id}")

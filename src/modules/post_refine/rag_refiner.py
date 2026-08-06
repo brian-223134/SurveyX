@@ -1,6 +1,6 @@
 """
 @Reference:
-1. How to create llama index templates: https://blog.csdn.net/lovechris00/article/details/137782020
+1. llama index 템플릿 생성 방법: https://blog.csdn.net/lovechris00/article/details/137782020
 """
 
 import json
@@ -45,10 +45,10 @@ class RagRefiner(BaseRefiner):
             else False
         )
         self.llamaindex_score_threshold = (
-            0.2  # paper的片段分割策略已经改变，threshold变得不那么重要了
+            0.2  # 논문 조각 분할 전략이 바뀌면서 threshold의 중요도가 낮아졌다
         )
 
-        # refine settings
+        # refine 설정
         self.paragraph_citation_random_start = 2
         self.paragraph_citation_random_end = self.llamaindex_topk
         assert self.paragraph_citation_random_start < self.paragraph_citation_random_end
@@ -193,9 +193,9 @@ class RagRefiner(BaseRefiner):
                 continue
 
             citation_content_list = [one.text for one in results]
-            # content in \cite{}
+            # \cite{} 안의 내용
             bib_list = [one.metadata["bib_name"] for one in results]
-            # remove duplications
+            # 중복 제거
             bib_list = list(set(bib_list))
             new_sent = self.rewrite_sent_with_citations(
                 sent=sent, citation_contents=citation_content_list, bib_list=bib_list
@@ -207,7 +207,7 @@ class RagRefiner(BaseRefiner):
     def refine_a_section(self, section: Paragraph, sec_id: int):
         revised_content = section.content
         para_list = section.content.strip().split("\n")
-        # filter
+        # 필터링
         para_list = [
             one for one in para_list if ("section" not in one and one.strip() != "")
         ]
@@ -260,6 +260,6 @@ class RagRefiner(BaseRefiner):
 if __name__ == "__main__":
     task_id = load_latest_task_id()
     print(f"task_id: {task_id}")
-    # store vector index into local directory for the convenience of debugging
+    # 디버깅 편의를 위해 vector index를 로컬 디렉터리에 저장
     rag_refiner = RagRefiner(task_id=task_id, llamaindex_store_local=False)
     rag_refiner.run()

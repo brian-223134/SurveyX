@@ -101,7 +101,7 @@ def parse_a_paper(paper_path: Path, bibname2abs: dict) -> dict:
 
 
 if __name__ == "__main__":
-    # get claim and sources per paper
+    # 논문별로 claim과 source 수집
     res_per_paper = []
     for topic in tqdm(TOPICS):
         ref_dir = Path(f"{BASE_DIR}/data/ref/{topic}")
@@ -118,7 +118,7 @@ if __name__ == "__main__":
             claim_TF[claim] = source_TF
         res_per_paper.append([claim2source, claim_TF, mainbody_path])
 
-    # calculate recall and precision
+    # recall과 precision 계산
     recall_l = []
     precision_l = []
     for claim2source, claim_TF, path in res_per_paper:

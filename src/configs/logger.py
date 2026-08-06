@@ -7,13 +7,13 @@ from src.configs.config import BASE_DIR
 
 
 class ColorFormatter(logging.Formatter):
-    """Colored log formatter"""
+    """컬러 로그 포매터"""
 
     COLOR_CODES = {
-        logging.ERROR: "\033[91m",  # Red
-        logging.WARNING: "\033[93m",  # Yellow
-        logging.INFO: "\033[92m",  # Green
-        logging.DEBUG: "\033[37m",  # Gray
+        logging.ERROR: "\033[91m",  # 빨강
+        logging.WARNING: "\033[93m",  # 노랑
+        logging.INFO: "\033[92m",  # 초록
+        logging.DEBUG: "\033[37m",  # 회색
     }
     RESET_CODE = "\033[0m"
 
@@ -30,7 +30,7 @@ def get_logger(name: Optional[str] = None) -> logging.Logger:
 
     logger.setLevel(logging.DEBUG)
 
-    # Console handler with color formatting
+    # 컬러 포맷을 적용한 콘솔 핸들러
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setLevel(logging.DEBUG)
     console_formatter = ColorFormatter(
@@ -39,7 +39,7 @@ def get_logger(name: Optional[str] = None) -> logging.Logger:
     )
     console_handler.setFormatter(console_formatter)
 
-    # File handler with default formatting
+    # 기본 포맷을 사용하는 파일 핸들러
     output_dir = Path(f"{BASE_DIR}/outputs/logs")
     output_dir.mkdir(parents=True, exist_ok=True)
     file_handler = logging.FileHandler(output_dir / f"{name}.log", "a")
@@ -56,7 +56,7 @@ def get_logger(name: Optional[str] = None) -> logging.Logger:
 
 
 if __name__ == "__main__":
-    # Example usage
+    # 사용 예시
     logger = get_logger("my_logger")
     logger.debug("This is a debug message.")
     logger.info("This is an info message.")

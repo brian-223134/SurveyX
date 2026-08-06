@@ -1,8 +1,8 @@
-<h2 align="center">SurveyX: 대규모 언어 모델을 활용한 학술 서베이 자동 생성</h2>
+<h2 align="center">SurveyX: Academic Survey Automation via Large Language Models</h2>
 
 <p align="center">
   <i>
-✨SurveyX에 오신 것을 환영합니다! 전체 기능을 사용해 보시려면 저희 웹사이트에 로그인해 주세요. 이 오픈소스 코드는 오프라인 처리 기능만 제공합니다.✨
+✨Welcome to SurveyX! If you want to experience the full features, please log in to our website. This open-source code only provides offline processing capabilities.✨
   </i>
   <br>
   <a href="https://arxiv.org/abs/2502.14776">
@@ -26,62 +26,62 @@
 </p>
 
 <div align="center">
-    <strong><a>저희 작업이 도움이 되셨다면 스타를 눌러주세요! ⭐️</a></strong>
+    <strong><a>If you find our work helpful, don't forget to give us a star! ⭐️</a></strong>
     <br>
-  👉 <strong><a href="https://surveyx.cn/">SurveyX 방문하기</a></strong> 👈
+  👉 <strong><a href="https://surveyx.cn/">Visit SurveyX</a></strong> 👈
 </div>
 
-\[한국어 | [English](README_en.md) | [中文](README_zh.md)\]
+\[[한국어](README.md) | English | [中文](README_zh.md)\]
 
-## 🤔SurveyX란?
+## 🤔What is SurveyX?
 
 ![surveyx_frame](assets/SurveyX.png)
 
-**SurveyX**는 대규모 언어 모델(LLM)의 능력을 활용해 고품질의 도메인 특화 학술 논문 및 서베이를 생성하는 학술 서베이 자동화 시스템입니다. 논문 제목과 문헌 검색용 키워드만 입력하면, 특정 주제에 맞춘 포괄적인 학술 논문이나 서베이를 요청할 수 있습니다.
+**SurveyX** is an advanced academic survey automation system that leverages the power of Large Language Models (LLMs) to generate high-quality, domain-specific academic papers and surveys. By simply providing a paper title and keywords for literature retrieval, users can request comprehensive academic papers or surveys tailored to specific topics.
 
 ---
 
-## 🆚 정식 버전 vs. 오프라인 오픈소스 버전
+## 🆚 Full Version vs. Offline Open Source Version
 
-이 저장소의 오픈소스 코드는 오프라인 처리 기능만 제공합니다. 전체 기능을 사용해 보시려면 [저희 웹사이트](https://www.surveyx.cn)에 로그인해 주세요.
+The open-source code in this repository only provides offline processing capabilities. If you want to experience the full features, please log in to [our website](https://www.surveyx.cn).
 
-**오픈소스 버전에 없는 기능:**
-1. **실시간 온라인 검색:** 직접 업로드한 `.md` 형식의 참고문헌만으로 서베이를 생성할 수 있습니다. 오픈소스 버전에는 문헌 수집을 위한 논문 데이터베이스, 웹 크롤러 시스템, 키워드 확장 알고리즘, 2단계 의미 기반 필터링이 포함되어 있지 않습니다.
-2. **멀티모달 문서 파싱:** 생성된 서베이에는 참고문헌으로부터의 이미지 이해나 삽화가 포함되지 않습니다.
+**Missing features in the open-source version:**
+1. **Real-time online search:** You can only generate surveys based on your own uploaded `.md` format references. The open-source version lacks access to our paper database, web crawler system, keyword expansion algorithms, and dual-layer semantic filtering for literature acquisition.
+2. **Multimodal document parsing:** The generated survey will not include image understanding or illustrations from the references.
 
 ---
 
-## 🛠️ 오프라인 오픈소스 버전 사용법 (이 저장소)
+## 🛠️ How to Use the Offline Open Source Version (This repo)
 
-### 1. 사전 준비
+### 1. Prerequisites
 
-- Python 3.10+ (Anaconda 권장)
-- `requirements.txt`에 명시된 모든 Python 의존성
-- LaTeX 환경 (PDF 컴파일용)
-- 파이프라인을 실행하기 전에, 모든 참고문헌 문서를 Markdown(`.md`) 형식으로 변환해 하나의 폴더에 모아두어야 합니다.
+- Python 3.10+ (Anaconda recommended)
+- All Python dependencies in `requirements.txt`
+- LaTeX environment (for PDF compilation):
+- You need to convert all your reference documents to Markdown (`.md`) format and put them together in a single folder before running the pipeline.
 
 ```bash
 sudo apt update && sudo apt install texlive-full
 ```
 
-### 2. 설치
+### 2. Installation
 
-1. 저장소 클론:
+1. Clone the repository:
 ```bash
 git clone https://github.com/IAAR-Shanghai/SurveyX.git
 cd SurveyX
 ```
 
-2. Python 의존성 설치:
+2. Install Python dependencies:
 ```bash
 pip install -r requirements.txt
 ```
 
-### 3. LLM 설정
+### 3. LLM Configuration
 
-파이프라인을 실행하기 전에 `src/configs/config.py`를 수정해 LLM API URL, 토큰, 모델 정보를 입력하세요.
+Edit `src/configs/config.py` to provide your LLM API URL, token, and model information before running the pipeline.
 
-예시:
+Example:
 ```python
 REMOTE_URL = "https://api.openai.com/v1/chat/completions"
 TOKEN = "sk-xxxx..."
@@ -90,16 +90,17 @@ EMBED_REMOTE_URL = "https://api.siliconflow.cn/v1/embeddings"
 EMBED_TOKEN = "your embed token here"
 ```
 
-### 4. 워크플로우
+### 4. Workflow
 
-실행할 때마다 `outputs/` 아래에 task id 이름의 고유한 결과 폴더가 생성됩니다(`outputs/<task_id>`, 예: `outputs/2025-06-18-0935_keyword/`).
 
-전체 파이프라인 실행:
+Each run creates a unique result folder under `outputs/`, named by the task id `outputs/<task_id>` (e.g., `outputs/2025-06-18-0935_keyword/`).
+
+Run the full pipeline:
 ```bash
 python tasks/offline_run.py --title "Your Survey Title" --key_words "keyword1, keyword2, ..." --ref_path "path/to/your/reference/dir"
 ```
 
-단계별 실행:
+Or run step by step:
 ```bash
 export task_id="your_task_id"
 python tasks/workflow/03_gen_outlines.py --task_id $task_id
@@ -108,21 +109,21 @@ python tasks/workflow/05_post_refine.py --task_id $task_id
 python tasks/workflow/06_gen_latex.py --task_id $task_id
 ```
 
-**참고:** 로컬 참고문헌 문서는 **반드시 Markdown(`.md`) 형식**이어야 하며, 하나의 디렉터리에 모아두어야 합니다.
+**Note:** Your local reference documents **must be in Markdown (`.md`) format** and placed in a single directory.
 
-### 5. 출력
+### 5. Output
 
-- 모든 결과는 `outputs/<task_id>/` 아래에 저장됩니다.
-  - `survey.pdf`: 최종 컴파일된 서베이
-  - `outlines.json`: 생성된 개요(outline)
-  - `latex/`: LaTeX 소스
-  - `tmp/`: 중간 산출물
+- All results are saved under `outputs/<task_id>/`
+  - `survey.pdf`: Final compiled survey
+  - `outlines.json`: Generated outline
+  - `latex/`: LaTeX sources
+  - `tmp/`: Intermediate files
 
 ---
 
-## 예시 논문
+## Example Papers
 
-| 제목                                                         | 키워드                                                        |
+| Title                                                        | Keywords                                                     |
 | ------------------------------------------------------------ | ------------------------------------------------------------ |
 |[A Survey of NoSQL Database Systems for Flexible and Scalable Data Management](./examples/Database/A_Survey_of_NoSQL_Database_Systems_for_Flexible_and_Scalable_Data_Management.pdf) | NoSQL, Database Systems, Flexibility, Scalability, Data Management |
 |[Vector Databases and Their Role in Modern Data Management and Retrieval A Survey](./examples/Database/Vector_Databases_and_Their_Role_in_Modern_Data_Management_and_Retrieval_A_Survey.pdf) | Vector Databases, Data Management, Data Retrieval, Modern Applications |
@@ -160,9 +161,9 @@ python tasks/workflow/06_gen_latex.py --task_id $task_id
 | [A survey on  flow batteries](examples/Other/battery.pdf)    | battery electrolyte formulation                              |
 | [Research on battery electrolyte formulation](examples/Other/flow_battery.pdf) | flow batteries                                               |
 
-## 📃SurveyX 인용
+## 📃Citing SurveyX
 
-이 프로젝트가 여러분의 프로젝트나 논문에 도움이 되었다면 아래와 같이 인용해 주세요:
+Please cite us if you find this project helpful for your project/paper:
 
 ```plain text
 @misc{liang2025surveyxacademicsurveyautomation,
@@ -179,16 +180,17 @@ python tasks/workflow/06_gen_latex.py --task_id $task_id
 <hr style="border: 1px solid #ecf0f1;">
 
 
-## 오픈소스 버전 안내
-이 오픈소스 버전의 SurveyX는 간소화된 판입니다. 전적으로 사용자가 제공한 로컬 참고문헌 문서에 의존하며, 다음과 같은 고급 기능은 포함하지 않습니다:
-- 키워드 확장 및 필터링 알고리즘
-- 멀티모달 이미지 파싱 또는 그림 추출
-- 온라인 참고문헌 검색 또는 자동 데이터 수집
+## Open Source Version Notice
+This open source version of Surveyx is a simplified edition. It relies entirely on user-provided local reference documents and does not include advanced features such as:
+- Keyword expansion and filtering algorithms
+- Multimodal image parsing or figure extraction
+- Online reference search or automatic data fetching
 
-이러한 고급 모듈은 MemTensor (Shanghai) Technology Co., Ltd.가 호스팅하는 SurveyX 정식 버전에서만 제공됩니다. 전체 기능을 경험해 보고 싶으시다면 공식 웹사이트를 방문해 주세요: [surveyx.cn](https://surveyx.cn)
+These advanced modules are only available in the full version of Surveyx, which is hosted by MemTensor (Shanghai) Technology Co., Ltd. If you would like to experience the complete features, please visit our official website: [surveyx.cn](https://surveyx.cn)
 
-질문이나 문제가 있으면 저장소에 이슈를 남겨 주세요.
+For questions or issues, please open an issue on the repository.
 
-## ⚠️ 면책 조항
+## ⚠️ Disclaimer
 
-SurveyX는 고급 언어 모델을 사용해 학술 논문 작성을 지원합니다. 다만 생성된 내용은 어디까지나 연구 보조 도구라는 점에 유의해야 합니다. SurveyX는 학술 기준에 대한 완전한 준수를 보장할 수 없으므로, 사용자는 생성된 논문의 정확성을 반드시 직접 검증해야 합니다.
+SurveyX uses advanced language models to assist with the generation of academic papers. However, it is important to note that the generated content is a tool for research assistance. Users should verify the accuracy of the generated papers, as SurveyX cannot guarantee full compliance with academic standards.
+

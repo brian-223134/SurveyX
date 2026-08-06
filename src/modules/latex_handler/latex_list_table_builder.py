@@ -47,10 +47,10 @@ class LatexListTableBuilder(LatexBaseTableBuilder):
         # self.exist_primary_attribute_path = os.path.join(tmp_path, "exist/Primary Attribute.json")
 
     def generate_benchmark_table_latex(self, data):
-        # Define the column names
+        # 열 이름 정의
         columns = ["Benchmark", "Size", "Domain", "Task Format", "Metric"]
 
-        # Start the LaTeX table code
+        # LaTeX 표 코드 시작
         latex_code = r"""
     \begin{table}[h!]
     \centering
@@ -58,7 +58,7 @@ class LatexListTableBuilder(LatexBaseTableBuilder):
     \begin{tabular}{p{0.25\textwidth} p{0.15\textwidth} p{0.35\textwidth} p{0.30\textwidth} p{0.25\textwidth}}
     \toprule
     """
-        # Add column headers with bold formatting
+        # 열 헤더를 굵게 추가
         latex_code += (
             " & ".join([f"\\textbf{{{col}}}" for col in columns])
             + r" \\"
@@ -67,7 +67,7 @@ class LatexListTableBuilder(LatexBaseTableBuilder):
             + "\n"
         )
 
-        # Add each row of data
+        # 각 데이터 행 추가
         for item in data:
             row = (
                 f"{item['cite_name']} & {item['size']} & {item['domain']} & "
@@ -75,7 +75,7 @@ class LatexListTableBuilder(LatexBaseTableBuilder):
             )
             latex_code += row + "\n"
 
-        # Close the table
+        # 표 닫기
         latex_code += r"""
     \bottomrule
     \end{tabular}%
@@ -85,26 +85,26 @@ class LatexListTableBuilder(LatexBaseTableBuilder):
     \end{table}
     """
         return latex_code
-        # Save the LaTeX code to a .tex file
+        # LaTeX 코드를 .tex 파일로 저장
         # with open(output_file, "w") as file:
         #     file.write(latex_code)
         # logger.info(f"Benchmark LaTeX table saved to {output_file}")
 
     def generate_arbitrary_table_latex(self, columns, data, index):
         """
-        生成LaTeX表格代码并保存到文件
+        LaTeX 표 코드를 생성해 파일로 저장한다
 
-        参数:
-        columns: List[str] - 表格的列名
-        data: List[Dict[str, str]] - 表格的数据，每个字典对应一行
-        output_file: str - 保存生成的LaTeX代码的文件名
+        인자:
+        columns: List[str] - 표의 열 이름
+        data: List[Dict[str, str]] - 표 데이터. 각 딕셔너리가 한 행에 대응
+        output_file: str - 생성된 LaTeX 코드를 저장할 파일명
         """
-        # 设置列宽，第一列为 0.2，其他列为 0.4
+        # 열 너비 설정. 첫 번째 열은 0.2, 나머지 열은 0.4
         column_definitions = r"p{0.2\textwidth} " + " ".join(
             [r"p{0.4\textwidth}" for _ in columns[1:]]
         )
 
-        # 开始生成LaTeX代码
+        # LaTeX 코드 생성 시작
         latex_code = (
             r"""
     \begin{table}[h!]
@@ -117,7 +117,7 @@ class LatexListTableBuilder(LatexBaseTableBuilder):
     """
         )
 
-        # 添加列名
+        # 열 이름 추가
         latex_code += (
             " & ".join([f"\\textbf{{{col}}}" for col in columns])
             + r" \\"
@@ -126,9 +126,9 @@ class LatexListTableBuilder(LatexBaseTableBuilder):
             + "\n"
         )
 
-        # 添加每行数据
+        # 각 행 데이터 추가
         for item in data:
-            # 获取值并转义特殊字符
+            # 값을 가져와 특수문자 이스케이프
             values = [
                 str(value).replace("_", "\\_").replace("&", "\\&")
                 for value in item.values()
@@ -138,7 +138,7 @@ class LatexListTableBuilder(LatexBaseTableBuilder):
             row = " & ".join(values) + r" \\"
             latex_code += row + "\n"
 
-        # 关闭表格
+        # 표 닫기
         latex_code += r"""
     \bottomrule
     \end{tabular}%
@@ -148,21 +148,21 @@ class LatexListTableBuilder(LatexBaseTableBuilder):
         latex_code += f"\n\\label{{tab:Arbitrary_table_{index}}}"
         latex_code += "\end{table}"
         return latex_code
-        # # 保存到文件
+        # # 파일로 저장
         # with open(output_file, "w") as file:
         #     file.write(latex_code)
 
     def find_method_section(self) -> str:
         outlines = load_single_file(self.outline_path)
         section_titles, subsection_titles = self.parse_outline(outlines)
-        ans = None  # 用于保存符合条件的元素
+        ans = None  # 조건을 만족하는 원소를 저장
         for section_title in section_titles:
             if (
                 "method" in section_title.lower()
                 or "technique" in section_title.lower()
             ):
                 ans = section_title
-                break  # 满足条件，退出循环
+                break  # 조건을 만족하므로 루프 종료
         if ans == None:
             prompt = load_prompt(
                 f"{BASE_DIR}/resources/LLM/prompts/latex_table_builder/find_method_section.md",
@@ -189,11 +189,11 @@ class LatexListTableBuilder(LatexBaseTableBuilder):
     def find_benchmark_section(self) -> str:
         outlines = load_single_file(self.outline_path)
         section_titles, subsection_titles = self.parse_outline(outlines)
-        ans = None  # 用于保存符合条件的元素
+        ans = None  # 조건을 만족하는 원소를 저장
         for subsection_title in subsection_titles:
             if "benchmark" in subsection_title.lower():
                 ans = subsection_title
-                break  # 满足条件，退出循环
+                break  # 조건을 만족하므로 루프 종료
         if ans == None:
             prompt = load_prompt(
                 f"{BASE_DIR}/resources/LLM/prompts/latex_table_builder/find_benchmark_section.md",
@@ -227,7 +227,7 @@ class LatexListTableBuilder(LatexBaseTableBuilder):
         )
         if subsection_content is None:
             return
-        # section_name为要生成benchmark表格对应的章节名称
+        # section_name은 benchmark 표를 생성할 대상 장(section)의 이름
         cite_names = self.extract_cite_name(subsection_content)
         info_list = []
         for name in cite_names:
@@ -289,7 +289,7 @@ class LatexListTableBuilder(LatexBaseTableBuilder):
             res = self.chat_agent.remote_chat(
                 text_content=prompt, model=ADVANCED_CHATAGENT_MODEL
             )
-            # Add introductory sentence
+            # 도입 문장 추가
             try:
                 revised_content = re.search(r"<Answer>(.*?)</Answer>", res, re.DOTALL)
                 if revised_content:
@@ -301,7 +301,7 @@ class LatexListTableBuilder(LatexBaseTableBuilder):
                 return
             tex = tex.replace(subsection_content, revised_content)
             save_result(tex, self.main_body_path)
-            # Add input\{benchmark_table}
+            # input\{benchmark_table} 추가
             tex = load_file_as_string(self.main_body_path)
             subsection_title = self.extract_subsection_title(subsection_content)
             tex = tex.replace(
@@ -350,11 +350,11 @@ class LatexListTableBuilder(LatexBaseTableBuilder):
             # print(attr_info)
             attr_list.append("Method Name")
             for attr_name in ["Attribute1", "Attribute2", "Attribute3"]:
-                value = attr_info.get(attr_name, None)  # 获取属性值，默认为 None
-                if value is None:  # 如果值为 None，打印报错信息
+                value = attr_info.get(attr_name, None)  # 속성 값 가져오기. 기본값은 None
+                if value is None:  # 값이 None이면 오류 메시지 출력
                     valid = 0
                     break
-                attr_list.append(value)  # 无论是否为 None，都添加到列表
+                attr_list.append(value)  # None 여부와 관계없이 리스트에 추가
             if valid == 0:
                 continue
             # attr_list.append(attr_info['Attribute1'])
@@ -449,7 +449,7 @@ class LatexListTableBuilder(LatexBaseTableBuilder):
                 res = self.chat_agent.remote_chat(
                     text_content=prompt, model=ADVANCED_CHATAGENT_MODEL
                 )
-                # Add introductory sentence
+                # 도입 문장 추가
                 try:
                     revised_content = re.search(
                         r"<Answer>(.*?)</Answer>", res, re.DOTALL
@@ -463,7 +463,7 @@ class LatexListTableBuilder(LatexBaseTableBuilder):
                     return
                 tex = tex.replace(subsection, revised_content)
                 save_result(tex, self.main_body_path)
-                # Add input\{Arbitrary_table_{i}}
+                # input\{Arbitrary_table_{i}} 추가
                 tex = load_file_as_string(self.main_body_path)
                 subsection_title = self.extract_subsection_title(subsection)
                 tex = tex.replace(
@@ -477,7 +477,7 @@ class LatexListTableBuilder(LatexBaseTableBuilder):
     @staticmethod
     def get_sections(survey_path: str) -> List[str]:
         """
-        Get the section names of the survey.
+        survey의 section 이름들을 가져온다.
         """
         tex = open(survey_path, "r").read()
         pattern = r"\\section{"
@@ -491,7 +491,7 @@ class LatexListTableBuilder(LatexBaseTableBuilder):
     @staticmethod
     def get_title(section: str) -> str:
         """
-        Get the title of the section.
+        section의 제목을 가져온다.
         """
         title = re.findall(r"\\section\{([^}]+)\}", section)[0]
         return title

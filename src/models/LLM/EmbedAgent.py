@@ -20,17 +20,17 @@ logger = get_logger("src.models.LLM.EmbedAgent")
 
 class EmbedAgent:
     """
-    A class to handle remote text embedding using a specified API.
-    Supports multi-threading for batch processing.
+    지정한 API를 사용해 원격 텍스트 임베딩을 처리하는 클래스.
+    배치 처리를 위한 멀티스레딩을 지원한다.
     """
 
     def __init__(self, token=EMBED_TOKEN, remote_url=EMBED_REMOTE_URL) -> None:
         """
-        Initialize the EmbedAgent.
+        EmbedAgent를 초기화한다.
 
         Args:
-            token (str): Authentication token for the remote API.
-            remote_url (str): URL of the remote embedding API.
+            token (str): 원격 API 인증 토큰.
+            remote_url (str): 원격 임베딩 API의 URL.
         """
         self.remote_url = remote_url
         self.token = token
@@ -58,16 +58,16 @@ class EmbedAgent:
         model: str = "BAAI/bge-m3",
     ) -> list:
         """
-        Embed text using the remote API.
+        원격 API를 사용해 텍스트를 임베딩한다.
 
         Args:
-            text (str): Input text to embed.
-            max_try (int, optional): Maximum number of retry attempts.
-            debug (bool, optional): Whether to return debug information.
-            model (str, optional): Model name for the remote API.
+            text (str): 임베딩할 입력 텍스트.
+            max_try (int, optional): 최대 재시도 횟수.
+            debug (bool, optional): 디버그 정보를 함께 반환할지 여부.
+            model (str, optional): 원격 API에서 사용할 모델 이름.
 
         Returns:
-            list: Embedding vector or error message.
+            list: 임베딩 벡터 또는 오류 메시지.
         """
         url = self.remote_url
         json_data = json.dumps(
@@ -116,11 +116,11 @@ class EmbedAgent:
 
     def __remote_embed_task(self, index: int, text: str):
         """
-        Internal method to handle embedding tasks in threads.
+        스레드에서 임베딩 작업을 처리하는 내부 메서드.
 
         Args:
-            index (int): Index of the text in the input list.
-            text (str): Text to embed.
+            index (int): 입력 리스트에서 해당 텍스트의 인덱스.
+            text (str): 임베딩할 텍스트.
 
         Returns:
             tuple: (index, embedding)
@@ -132,15 +132,15 @@ class EmbedAgent:
         self, texts: list[str], worker: int = 10, desc: str = "Batch Embedding..."
     ) -> list:
         """
-        Batch process text embeddings using multi-threading.
+        멀티스레딩으로 텍스트 임베딩을 배치 처리한다.
 
         Args:
-            texts (list[str]): List of texts to embed.
-            worker (int, optional): Number of worker threads.
-            desc (str, optional): Description for the progress bar.
+            texts (list[str]): 임베딩할 텍스트 리스트.
+            worker (int, optional): 워커 스레드 개수.
+            desc (str, optional): 진행률 표시줄에 표시할 설명.
 
         Returns:
-            list: List of embedding vectors.
+            list: 임베딩 벡터 리스트.
         """
         embeddings = ["no response"] * len(texts)
         with ThreadPoolExecutor(max_workers=worker) as executor:

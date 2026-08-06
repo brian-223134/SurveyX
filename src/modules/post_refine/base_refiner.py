@@ -1,6 +1,6 @@
 """
 @Reference:
-1. How to create llama index templates: https://blog.csdn.net/lovechris00/article/details/137782020
+1. llama index 템플릿 생성 방법: https://blog.csdn.net/lovechris00/article/details/137782020
 """
 
 from pathlib import Path
@@ -29,7 +29,7 @@ class BaseRefiner:
         self.mainbody_path = self.latex_tmp_dir / "mainbody.tex"
         self.refined_mainbody_path = self.latex_tmp_dir / "mainbody_refined.tex"
 
-        # refine settings
+        # refine 설정
         if "papers" not in kwargs:
             self.papers = self.load_papers(self.paper_dir)
         else:
@@ -52,5 +52,5 @@ class BaseRefiner:
 
 
 if __name__ == "__main__":
-    # store vector index into local directory for the convenience of debugging
+    # 디버깅 편의를 위해 vector index를 로컬 디렉터리에 저장
     rag_refiner = BaseRefiner()

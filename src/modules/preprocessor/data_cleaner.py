@@ -28,7 +28,7 @@ class DataCleaner:
         self.chat_agent_workers = CHAT_AGENT_WORKERS
 
     def load_json_dir(self, json_path_dir: Path):
-        """load papers from json directory."""
+        """JSON 디렉터리에서 논문들을 불러온다."""
         papers = []
         cnt_total = 0
         for file in os.listdir(json_path_dir):
@@ -37,7 +37,7 @@ class DataCleaner:
                 dic = json.loads(load_file_as_string(p))
                 if (
                     "md_text" in dic
-                ):  # Only consider those with `md_text` as available papers.
+                ):  # `md_text`가 있는 논문만 사용 가능한 논문으로 간주
                     papers.append(dic)
                 cnt_total += 1
         logger.info(f"Find {len(papers)} out of {cnt_total} papers available.")
@@ -47,10 +47,10 @@ class DataCleaner:
         for paper in tqdm(self.papers, desc="completing title..."):
             if "title" not in paper:
                 paper["title"] = paper["md_text"].splitlines()[0].strip(" #")
-                paper["title"] = paper["title"][:32]  # avoid too long title
+                paper["title"] = paper["title"][:32]  # 제목이 너무 길어지지 않도록 제한
 
     def complete_abstract(self):
-        pattern = r"\s*a\s*b\s*s\s*t\s*r\s*a\s*c\s*t\s*"  # find "abstract" substring, with whitespace bettween letters.
+        pattern = r"\s*a\s*b\s*s\s*t\s*r\s*a\s*c\s*t\s*"  # 글자 사이에 공백이 있어도 "abstract" 부분 문자열을 찾음
         for paper in tqdm(self.papers, desc="completing abstract..."):
             if "abstract" in paper and len(paper["abstract"]) > 500:
                 continue
@@ -62,7 +62,7 @@ class DataCleaner:
                 paper["abstract"] = paper["md_text"][:2000]
 
     def complete_bib(self, bib_file_save_path: str):
-        """Not only complete the bib_name, also need to save all bibnames into a references.bib file"""
+        """bib_name을 채울 뿐 아니라, 모든 bib 항목을 references.bib 파일로 저장한다."""
         var_name_i = 0
         bib_all = []
         remove_non_ascii_chars = (
@@ -113,8 +113,8 @@ class DataCleaner:
         return False
 
     def get_paper_type(self, chat_agent: ChatAgent):
-        """complete the paper type field with chatgpt."""
-        # load prompts
+        """LLM을 사용해 paper type 필드를 채운다."""
+        # 프롬프트 로드
         prompts_and_index = []
         for i, paper in enumerate(self.papers):
             abstract = paper["abstract"]
@@ -148,11 +148,11 @@ class DataCleaner:
             return False
 
     def get_attri(self, chat_agent: ChatAgent):
-        """extract attribute tree from paper"""
-        # 获取所有含 "md_text" 的文件并生成 prompts
+        """논문에서 attribute tree를 추출한다."""
+        # "md_text"가 있는 모든 파일을 가져와 프롬프트 생성
         prompts_and_index = []
         for i, paper in enumerate(self.papers):
-            # 根据 paper_type 加载对应的 prompt
+            # paper_type에 맞는 프롬프트 로드
             paper_type = paper["paper_type"].lower()
             prompt = load_prompt(
                 f"{BASE_DIR}/resources/LLM/prompts/preprocessor/attri_tree_for_{paper_type}.md",
@@ -160,7 +160,7 @@ class DataCleaner:
             )
             prompts_and_index.append([prompt, i])
 
-        # 批量处理 prompts
+        # 프롬프트 일괄 처리
         cnt = 0
         while prompts_and_index and cnt < 3:
             prompts = [x[0] for x in prompts_and_index]
@@ -178,7 +178,7 @@ class DataCleaner:
     def save_papers(
         self, save_dir: Union[str, Path], file_name_attr: str = "title"
     ) -> None:
-        """save every cleaned paper."""
+        """정제된 논문들을 모두 저장한다."""
         filter_field = [
             "from",
             "scholar_id",
@@ -207,7 +207,7 @@ class DataCleaner:
         return self.papers
 
     def quick_check(self) -> list[dict]:
-        """Used in PaperRecaller for quick check"""
+        """PaperRecaller에서 빠른 검사를 위해 사용한다."""
         papers_with_md = [paper for paper in self.papers if "md_text" in paper]
         self.papers = papers_with_md
         self.complete_title()

@@ -22,19 +22,19 @@ def sanitize_filename(filename: str) -> str:
 
 
 def save_result(result: str, path: Union[str, Path]) -> None:
-    """save a string to a file, if the prefix dir doesn't exit, create them.
+    """문자열을 파일로 저장한다. 상위 디렉터리가 없으면 생성한다.
 
     Args:
-        result (str): string waiting to be saved.
-        path (str): where to save this string.
+        result (str): 저장할 문자열.
+        path (str): 이 문자열을 저장할 위치.
     """
     if isinstance(path, str):
         path = Path(path)
     directory = path.parent
-    # 如果目录不存在，则创建目录
+    # 디렉터리가 없으면 생성
     if not directory.exists():
         directory.mkdir(exist_ok=True, parents=True)
-    # 写入文件
+    # 파일에 기록
     with path.open("w", encoding="utf-8") as fw:
         fw.write(result)
 
@@ -51,10 +51,10 @@ def load_file_as_string(path: Union[str, Path]) -> str:
 
 
 def update_config(dic: dict, config_path: str):
-    """update the config file
+    """설정 파일을 갱신한다.
 
     Args:
-        dic (dict): new config dict.
+        dic (dict): 새 설정 딕셔너리.
     """
     config_path = Path(config_path)
     if config_path.exists():
@@ -67,7 +67,7 @@ def update_config(dic: dict, config_path: str):
 
 def save_as_json(result: dict, path: str):
     """
-    Save the result as a JSON file.
+    결과를 JSON 파일로 저장한다.
     """
     directory = os.path.dirname(path)
     if directory and not os.path.exists(directory):
@@ -78,27 +78,27 @@ def save_as_json(result: dict, path: str):
 
 def load_meta_data(dir_path):
     """
-    Load all JSON files in the directory.
+    디렉터리 안의 모든 JSON 파일을 불러온다.
     """
     data = []
     for filename in os.listdir(dir_path):
         if filename.endswith(".json"):
             file_path = os.path.join(dir_path, filename)
             with open(file_path, "r", encoding="utf-8") as file:
-                result = json.load(file)  # 将 JSON 文件内容读取为 Python 列表
+                result = json.load(file)  # JSON 파일 내용을 Python 리스트로 읽기
             data.append(result)
     return data
 
 
 def load_single_file(file_path):
     """
-    Load a single JSON file based on its path.
+    경로를 기준으로 단일 JSON 파일을 불러온다.
     """
-    # 判断文件路径是否存在
+    # 파일 경로 존재 여부 확인
     if not os.path.exists(file_path):
         return ""
 
-    # 如果路径存在，打开并读取文件
+    # 경로가 존재하면 파일을 열어 읽기
     with open(file_path, "r") as file:
         article = json.load(file)
     return article
@@ -106,7 +106,7 @@ def load_single_file(file_path):
 
 def load_prompt(filename: str, **kwargs) -> str:
     """
-    读取prompt模板
+    prompt 템플릿을 읽어온다.
     """
     path = os.path.join("", filename)
     if os.path.exists(path):

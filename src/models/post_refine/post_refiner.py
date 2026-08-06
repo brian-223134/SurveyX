@@ -1,6 +1,6 @@
 """
 @Reference:
-1. How to create llama index templates: https://blog.csdn.net/lovechris00/article/details/137782020
+1. llama index 템플릿 생성 방법: https://blog.csdn.net/lovechris00/article/details/137782020
 """
 
 from pathlib import Path
@@ -53,7 +53,7 @@ class PostRefiner(BaseRefiner):
         self.max_retry_times = 2
         self.max_words = 10000
 
-        # refine settings
+        # refine 설정
         if "papers" not in kwargs:
             self.papers = self.load_papers(self.paper_dir)
         else:
@@ -61,7 +61,7 @@ class PostRefiner(BaseRefiner):
         logger.info(f"PostRefiner load {len(self.papers)} papers")
         self.llamaindex_topk = llamaindex_topk
 
-        # refining modules
+        # refine 모듈
         self.llamaindex_store_local = False
         if "llamaindex_wrapper" in kwargs:
             self.llamaindex_wrapper = kwargs["llamaindex_wrapper"]
@@ -89,7 +89,7 @@ class PostRefiner(BaseRefiner):
             llamaindex_wrapper=self.llamaindex_wrapper,
         )
 
-        # -- tables
+        # -- 표(table)
         chat_agent = ChatAgent(TokenMonitor(task_id, "generate table"))
         self.paper_dir = Path(f"{OUTPUT_DIR}/{str(self.task_id)}/papers")
         self.tmp_path = Path(f"{OUTPUT_DIR}/{str(self.task_id)}/tmp/table_gen")
@@ -132,7 +132,7 @@ class PostRefiner(BaseRefiner):
         time_monitor = TimeMonitor(self.task_id)
         time_monitor.start("generate tabel")
 
-        # -- tables 直接在mainbody_post_refined.tex文件上修改
+        # -- 표(table)는 mainbody_post_refined.tex 파일을 직접 수정한다
         try:
             self.summary_table_builder.run()
         except Exception as e:
@@ -174,18 +174,18 @@ class PostRefiner(BaseRefiner):
             final_refined_content = self.rule_based_refiner.run(
                 mainbody_path=self.fig_builder.fig_mainbody_path
             )
-            # save the final refined content
+            # 최종 refine 결과 저장
             save_result(final_refined_content, self.refined_mainbody_path)
-            # generate tables
+            # 표 생성
             self.generate_tables()
             words_count = len(final_refined_content.strip().split())
             if words_count < self.max_words:
-                logger.debug(f"核验通过，postrefine后的main body总字数为{words_count}")
+                logger.debug(f"검증 통과. post refine 후 본문 총 단어 수: {words_count}")
                 break
             else:
                 try_times += 1
                 logger.debug(
-                    f"核验不通过，postrefine后的main body总字数为{words_count}；postrefine后的main重新生成，trying times {try_times}, max trying: {self.max_retry_times}"
+                    f"검증 실패. post refine 후 본문 총 단어 수: {words_count}. 본문을 다시 생성한다. trying times {try_times}, max trying: {self.max_retry_times}"
                 )
 
         logger.info(f"Post refine and save content to {self.refined_mainbody_path}")

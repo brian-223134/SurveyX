@@ -128,7 +128,7 @@ def gen_keyword(title: str, key_words: str) -> str:
     if key_words:
         final_keywords = ",".join(
             key_words.split(",") + new_keywords.split(",")[:3]
-        )  # only select first 3 generated keyword, to avoid misunderstanding
+        )  # 오해를 줄이기 위해 생성된 키워드 중 앞의 3개만 선택
     else:
         final_keywords = new_keywords
     logger.info(f"Keywords: {final_keywords}")
@@ -136,8 +136,8 @@ def gen_keyword(title: str, key_words: str) -> str:
 
 
 def gen_topic(title: str, key_word: str) -> str:
-    """Generate a detail description of the keyword in one sentence.
-    This description is used to provide more infos about keyword.
+    """키워드에 대한 상세 설명을 한 문장으로 생성한다.
+    이 설명은 키워드에 대한 추가 정보를 제공하는 데 사용된다.
     """
     chat = ChatAgent()
     prompt = load_prompt(
@@ -150,7 +150,7 @@ def gen_topic(title: str, key_word: str) -> str:
 
 
 def wait_for_crawling(seconds: int):
-    """Sleep system for seconds."""
+    """지정한 초만큼 대기한다."""
     for i in range(seconds):
         print(
             f"\rWaiting for crawling... remaining {seconds - i} seconds.   ",

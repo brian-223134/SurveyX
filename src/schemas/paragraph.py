@@ -16,8 +16,8 @@ class Paragraph:
 
     @staticmethod
     def from_subsection(subsection: str, no):
-        """
-        format:
+        r"""
+        형식:
         \subsection{xxx} xxx
         xxx ...
         """
@@ -29,8 +29,8 @@ class Paragraph:
 
     @staticmethod
     def from_section(section: str, no):
-        """
-        given the section(1-level paragraph), format:
+        r"""
+        section(1단계 문단)이 주어졌을 때의 형식:
         \section{xxx} xxxx
         \subsection{xxx} xxx
         \subsection{xxx} xxx
