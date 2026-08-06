@@ -120,6 +120,56 @@ python tasks/workflow/06_gen_latex.py --task_id $task_id
 
 ---
 
+## 🧭 논문 구현 가이드 (이 포크 전용)
+
+> 이 절은 원본 저장소에는 없는, [SurveyX 논문(arXiv:2502.14776)](https://arxiv.org/abs/2502.14776)을 직접 구현·재현하기 위해 정리한 내용입니다.
+
+**핵심 요약: 논문의 Generation Phase(§3.2)는 이 저장소에 전부 구현되어 있고, Preparation Phase(§3.1)는 알고리즘은 모두 있으나 데이터 소스만 비어 있습니다.** 처음부터 만드는 작업이 아니라 구멍 하나를 메우는 작업입니다.
+
+### 논문 ↔ 코드 매핑
+
+| 논문 | 코드 | 상태 |
+|---|---|---|
+| §3.1.1 Keyword Expansion (Algorithm 1) | [`paper_recaller.py`](src/modules/preprocessor/paper_recaller.py) `recall_papers_iterative` | ✅ 완전 구현. KMeans `n=|K_pool|+1`, 클러스터별 LLM 키워드 생성, rank 기반 선택, topic 가중치 ×2 |
+| §3.1.1 2-step filtration | [`paper_filter.py`](src/modules/preprocessor/paper_filter.py) `coarse_grained_sort` + `fine_grained_sort` | ✅ 완전 구현. 임베딩 Top-K(200) → LLM 관련성 판정 |
+| §3.1.1 retrieval data source | [`data_fetcher.py`](src/modules/preprocessor/data_fetcher.py) | ❌ **비어 있음 — 유일한 구멍** |
+| §3.1.2 AttributeTree | [`data_cleaner.py`](src/modules/preprocessor/data_cleaner.py) `get_paper_type` + `get_attri`, `resources/LLM/prompts/preprocessor/attri_tree_for_{method,benchmark,theory,survey}.md` | ✅ 완전 구현. 논문 Appendix B의 4개 템플릿 그대로 |
+| §3.2.1 Outline Optimization | [`outlines_generator.py`](src/models/generator/outlines_generator.py) `run` | ✅ 5단계(1차 outline → 논문 mount로 hint 생성 → 2차 outline → 중복 제거 → 재구성)가 논문과 일치 |
+| §3.2.2 Content Generation | [`content_generator.py`](src/models/generator/content_generator.py) `content_fulfill_iter` | ✅ subsection 단위 생성 + 기생성 본문을 컨텍스트로 전달 |
+| §3.2.3 RAG-based Rewriting | [`rag_refiner.py`](src/modules/post_refine/rag_refiner.py) | ✅ |
+| §3.2.3 Figure & Table Generation | [`latex_figure_builder.py`](src/modules/latex_handler/latex_figure_builder.py), `latex_*_table_builder.py` | ✅ |
+| §3.2.3 MLLM 기반 그림 검색 | [`fig_retrieve_refiner.py`](src/modules/post_refine/fig_retrieve_refiner.py) | ⚠️ `post_refiner.py`에서 호출이 주석 처리됨 + `FIG_RETRIEVE_URL=""` |
+| §4.1 content / citation 평가 | [`eval/eval_content.py`](eval/eval_content.py), [`eval/eval_citation.py`](eval/eval_citation.py) | ✅ |
+| §4.1 reference relevance (IoU, Relevance_semantic, Relevance_LLM) | — | ❌ 미구현 |
+
+`DataFetcher`가 비어 있는 구체적인 형태: `CRAWLER_BASE_URL = ""`, `_get_db_authentication()`은 `pass`만 있음, `task_submit()`의 `url = f""`, `token: ""`. 사내 크롤러 및 arXiv DB(약 260만 편) 서버에 접속하는 코드가 오픈소스화 과정에서 제거된 것입니다. 그래서 `tasks/offline_run.py`는 `PaperRecaller`/`PaperFilter`를 건너뛰고, 사용자가 제공한 `.md`로 곧바로 `DataCleaner.offline_proc()`을 실행합니다.
+
+### 권장 구현 순서
+
+**0단계 — 환경 문제 해결 (현재 그대로면 실행이 막힙니다)**
+- `requirements.txt`의 `fitz==0.0.1.dev2`는 잘못된 패키지입니다. `latex_generator.py`의 `import fitz`는 PyMuPDF를 요구하므로 `PyMuPDF`로 교체해야 합니다.
+- `llama-index-embeddings-huggingface`가 `requirements.txt`에 없습니다 (`EmbedAgent`가 `HuggingFaceEmbedding`을 임포트).
+- `src/configs/config.py`의 `REMOTE_URL` 기본값이 `https://openai.com/...`인데, 위 설정 예시대로 `https://api.openai.com/...`이 맞습니다.
+
+**1단계 — 오프라인 경로로 end-to-end 먼저 실행**
+참고문헌 md 10~20개로 `tasks/offline_run.py`를 실행해 outline → content → post_refine → LaTeX 전 구간이 도는지 확인합니다. 이것만으로 논문 §3.2 전체를 검증하는 셈이고, 프롬프트와 데이터 스키마 감을 잡을 수 있어 이후 작업에 가장 도움이 됩니다.
+
+**2단계 — `DataFetcher` 재구현 (실질적인 "논문 구현" 작업)**
+`search_on_arxiv(key_words) -> list[dict]`와 `search_on_google(...) -> list[dict]` 두 메서드의 시그니처만 지키면 상위의 `PaperRecaller`/`PaperFilter`는 수정할 필요가 없습니다. 반환 dict에는 `_id`, `title`, `abstract`, `md_text`(전문), `reference`(BibTeX)가 필요하며, 이 중 `md_text`가 AttributeTree 추출의 입력이므로 전문 확보 여부가 최종 품질을 좌우합니다. 논문의 사내 인프라 대신 arXiv API + Semantic Scholar/OpenAlex 조합이 현실적이며, 전문은 arXiv PDF → Markdown 변환이 필요합니다. `DEFAULT_PAPER_POOL_LIMIT=1024`가 논문의 임계값 θ=1000에 해당합니다.
+
+**3단계 — 평가 지표 보강**
+§4.1의 reference relevance 3종(IoU, Relevance_semantic, Relevance_LLM)이 없어 2단계에서 만든 검색 알고리즘의 성능을 측정할 수단이 없습니다. 2단계보다 먼저 갖추는 편이 낫습니다. 논문 Table 2의 ablation은 대부분 설정값으로 재현 가능합니다(`DEFAULT_ITERATION_LIMIT=0`으로 keyword expansion 제거, `get_attri` 결과 대신 `md_text` 직접 투입 등).
+
+**4단계 (선택) — MLLM 기반 그림 검색 복구**
+`post_refiner.py`의 주석 처리된 `fig_retrieve_refiner.run(...)` 호출을 되살리고, `FIG_RETRIEVE_URL` 계열 설정을 자체 멀티모달 파이프라인으로 대체합니다.
+
+### 코드를 읽으며 확인한 사항
+
+- `data_fetcher.py`의 `search_on_arxiv`: docstring은 "overlap이 2 이상인 결과를 반환"이라고 하지만 실제 조건은 `id_counter[_id] >= 1`이라 필터가 동작하지 않습니다. 2단계에서 이 함수를 다시 사용할 때 의도대로 고칠지 결정이 필요합니다.
+- `paper_recaller.py`의 키워드 선택(`_select_new_keyword`): 논문 본문 산문("평균 거리는 최소, 최대 거리는 최대")과 논문 수식 (1)(2)(3)이 서로 반대인데, **코드는 수식을 따릅니다**(평균 거리가 큰 쪽 + 최대 거리가 작은 쪽 선호). 재구현 시 수식 기준이 맞다고 보면 됩니다.
+
+---
+
 ## 예시 논문
 
 | 제목                                                         | 키워드                                                        |
