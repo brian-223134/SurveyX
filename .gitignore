@@ -41,3 +41,5 @@ backups
 
 CLAUDE.md
 REPRODUCTION.md
+# secrets
+.env
