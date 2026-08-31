@@ -1,6 +1,10 @@
 .DS_Store
 
-outputs
+# outputs는 무시하되, 최종 생성된 서베이 PDF만 추적한다
+outputs/**
+!outputs/*/
+!outputs/*/survey.pdf
+!outputs/*/survey_wtmk.pdf
 
 # tmp directory
 tmp/
