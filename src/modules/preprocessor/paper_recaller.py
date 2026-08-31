@@ -15,7 +15,7 @@ from src.models.LLM import ChatAgent
 from src.models.LLM import EmbedAgent
 from src.models.LLM.utils import load_prompt
 from src.modules.preprocessor.data_cleaner import DataCleaner
-from src.modules.preprocessor.data_fetcher import DataFetcher
+from src.modules.preprocessor.data_fetcher import get_data_fetcher
 from src.configs.config import DEFAULT_DATA_FETCHER_ENABLE_CACHE
 
 logger = get_logger("src.modules.preprocessor.PaperRecaller")
@@ -46,7 +46,7 @@ class PaperRecaller:
         self.iteration_limit = iteration_limit
         self.paper_pool_limit = paper_pool_limit
 
-        self.data_fetcher = DataFetcher(enable_cache=enable_cache)
+        self.data_fetcher = get_data_fetcher(enable_cache=enable_cache)
         self.embed_agent = EmbedAgent()
         self.chat_agent = ChatAgent() if chat_agent is None else chat_agent
 
