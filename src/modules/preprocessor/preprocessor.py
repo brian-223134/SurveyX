@@ -56,6 +56,15 @@ def single_preprocessing(args: ArgsNamespace) -> str:
     logger.info(
         f"================= totally {len(filtered_papers)} papers have been saved after filtered =================="
     )
+
+    # 2.5. 전문 지연 확보 — 필터 통과분에만 md_text를 채운다 (common corpus 어댑터 전용).
+    # 원본 DataFetcher 경로에서는 fill_md_text가 없으므로 아무것도 하지 않는다.
+    fill_md_text = getattr(recaller.data_fetcher, "fill_md_text", None)
+    if callable(fill_md_text):
+        time_monitor.start("fetch fulltext")
+        filtered_papers = fill_md_text(filtered_papers)
+        time_monitor.end("fetch fulltext")
+
     save_papers(filtered_papers, Path(f"{OUTPUT_DIR}/{str(task_id)}/jsons"))
     time_monitor.end("filter paper")
 

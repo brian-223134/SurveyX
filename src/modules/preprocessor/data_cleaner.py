@@ -54,6 +54,9 @@ class DataCleaner:
         for paper in tqdm(self.papers, desc="completing abstract..."):
             if "abstract" in paper and len(paper["abstract"]) > 500:
                 continue
+            if "md_text" not in paper:
+                # 전문 미확보(지연 파싱) 단계 — 짧은 초록이라도 그대로 둔다
+                continue
             match = re.search(pattern, paper["md_text"], re.IGNORECASE)
             if match:
                 index = match.start()
@@ -207,9 +210,17 @@ class DataCleaner:
         return self.papers
 
     def quick_check(self) -> list[dict]:
-        """PaperRecaller에서 빠른 검사를 위해 사용한다."""
-        papers_with_md = [paper for paper in self.papers if "md_text" in paper]
-        self.papers = papers_with_md
+        """PaperRecaller에서 빠른 검사를 위해 사용한다.
+
+        전문(md_text)은 필터 통과 후 지연 확보하므로 여기서 요구하지 않는다.
+        title/abstract를 md_text로도 복원할 수 없는 레코드만 버린다.
+        """
+        self.papers = [
+            paper
+            for paper in self.papers
+            if ("title" in paper or "md_text" in paper)
+            and ("abstract" in paper or "md_text" in paper)
+        ]
         self.complete_title()
         self.complete_abstract()
         return self.papers

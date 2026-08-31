@@ -424,6 +424,21 @@ class DataFetcher:
         return papers
 
 
+def get_data_fetcher(enable_cache: bool = DEFAULT_DATA_FETCHER_ENABLE_CACHE):
+    """SURVEYX_DATA_SOURCE 환경변수에 따라 데이터 소스 구현을 선택한다.
+
+    - "common_corpus": asg-common-corpus 어댑터 (로컬 parquet + view)
+    - 그 외/미설정: 원본 DataFetcher (사내 크롤러 인프라 — 현재 동작 불가)
+    """
+    import os
+
+    if os.getenv("SURVEYX_DATA_SOURCE", "").replace("-", "_") == "common_corpus":
+        from src.modules.preprocessor.common_corpus_fetcher import CommonCorpusFetcher
+
+        return CommonCorpusFetcher(enable_cache=enable_cache)
+    return DataFetcher(enable_cache=enable_cache)
+
+
 # python -m src.modules.preprocessor.data_fetcher
 if __name__ == "__main__":
     data_fetcher = DataFetcher()
