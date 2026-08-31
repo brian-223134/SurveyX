@@ -1,11 +1,13 @@
 aiohttp==3.12.13
-fitz==0.0.1.dev2
+# fitz(동명이인 패키지) 대신 PyMuPDF — latex_generator.py의 `import fitz`가 요구 (README §5)
+PyMuPDF==1.25.3
 llama_index==0.12.42
+# EmbedAgent/LlamaIndexWrapper의 HuggingFaceEmbedding 임포트에 필요 (README §5)
+llama-index-embeddings-huggingface==0.5.4
 matplotlib==3.10.3
 numpy==2.3.0
 openai==1.88.0
 pandas==2.3.0
-PyYAML==6.0.2
 PyYAML==6.0.2
 rapidfuzz==3.13.0
 Requests==2.32.4

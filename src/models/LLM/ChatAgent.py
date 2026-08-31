@@ -26,6 +26,9 @@ from src.configs.config import (
     BASE_DIR,
     DEFAULT_CHATAGENT_MODEL,
     CHAT_AGENT_WORKERS,
+    CHAT_REQUEST_TIMEOUT,
+    OPENROUTER_PROVIDER_ONLY,
+    OPENROUTER_ALLOW_FALLBACKS,
 )
 from src.configs.constants import OUTPUT_DIR
 
@@ -114,8 +117,16 @@ class ChatAgent:
             messages.append(image_message_frame)
 
         payload = {"model": model, "messages": messages, "temperature": temperature}
+        # OpenRouter provider 고정 (quantization 일관성). 비어 있으면 미전송.
+        if OPENROUTER_PROVIDER_ONLY:
+            payload["provider"] = {
+                "only": [OPENROUTER_PROVIDER_ONLY],
+                "allow_fallbacks": OPENROUTER_ALLOW_FALLBACKS,
+            }
 
-        response = requests.post(url, headers=header, json=payload)
+        response = requests.post(
+            url, headers=header, json=payload, timeout=CHAT_REQUEST_TIMEOUT
+        )
 
         if response.status_code != 200:
             logger.error(
