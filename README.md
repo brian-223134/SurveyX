@@ -196,6 +196,59 @@ python tasks/workflow/06_gen_latex.py    --task_id $task_id
 
 ---
 
+## 9. 실험 결과
+
+### 9.1 Edge Computing 서베이 1편 생성 (2026-08-31)
+
+공통 코퍼스 어댑터 + OpenRouter 백본 전환 후 첫 엔드투엔드 실행 기록.
+
+**세팅**
+
+| 항목 | 값 |
+|---|---|
+| 백본 LLM | `meta-llama/llama-3.3-70b-instruct` (OpenRouter, provider `akashml/fp8` 고정) |
+| 임베딩 | `BAAI/bge-base-en-v1.5` (로컬, 비용 $0) |
+| 코퍼스 | asg-common-corpus `v0.1-poc`, view `surveyeval-2512` (cutoff 2025-12-31) |
+| 입력 | `--title "A Survey on Edge Computing"`, 키워드 6개 (LLM 보충 없음) |
+| task_id | `2026-08-31-1231_edge_` |
+
+**문헌 깔때기**: 리콜 1,318편 → coarse/fine 필터 200편 → 전문 확보 199편(실패 1) → 정제 후 199편 인용 풀
+
+**소요 시간** — 총 **3시간 7분** (12:31~15:38, LaTeX 컴파일 제외)
+
+| 단계 | 소요 |
+|---|---|
+| 리콜 (Keyword Expansion) | 2분 |
+| 필터 (coarse+fine) | 3분 |
+| 전문 확보 (arXiv fetch, 200편 순차) | 24분 |
+| 정제 + AttributeTree (199편) | 51분 |
+| 아웃라인 생성 | 6분 |
+| 본문 생성 (39개 소절) | 56분 |
+| 사후 정제 (RAG 재작성 등) + 표 생성 | 45분 |
+
+**비용** — **실측 $1.94** (`check_credits.py` 전후 차이. TokenMonitor 토큰 합계 기준 추정 $2.30)
+
+- 총 토큰: 입력 9.52M / 출력 0.77M
+- 지배 구간: AttributeTree 추출(입력 6.13M, 64%) > 본문 생성(2.52M)
+- 참고: 원 논문 세팅(gpt-4o)이었다면 동일 토큰량에 약 $31 — 약 16배 절감
+
+**산출물** — [`outputs/2026-08-31-1231_edge_/survey.pdf`](outputs/2026-08-31-1231_edge_/survey.pdf)
+
+| 항목 | 값 |
+|---|---|
+| 분량 | 24페이지, 87,407자 (12,099단어) |
+| 생성 그림 | TikZ 7개 (구조도 1 + 분류 트리 6) |
+| 참고문헌 | 199편 (`references.bib`) |
+
+**특이사항 (재현 시 참고)**
+
+- llama의 JSON 형식 실패로 hint 마운트 누락 10/199편(5%) — gpt-4o 대비 형식 준수력 차이의 실측치
+- 429 rate limit 1회 (tenacity 재시도로 흡수, `CHAT_AGENT_WORKERS=4` 기준)
+- 표 생성 단계는 실행됐으나 최종본에 미포함 — 원인 추적 필요
+- LaTeX 컴파일이 PATH 최우선의 MiKTeX(패키지 불완전)로 실패 → `/usr/bin`의 TeX Live로 재컴파일해 해결. pdflatex 경로 고정 패치 필요
+
+---
+
 ## 참고
 
 원 논문:
