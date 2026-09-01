@@ -238,7 +238,7 @@ python tasks/workflow/06_gen_latex.py    --task_id $task_id
 |---|---|
 | 분량 | 27페이지, 103,302자 (14,188단어) |
 | 생성 그림 | TikZ 7개 (구조도 1 + 분류 트리 6) |
-| 참고문헌 | 199편 — 저자 175편(88%)·연도·arXiv id 포함 (`scripts/rebuild_references.py`로 보강 후 재컴파일) |
+| 참고문헌 | 199편 — 저자 175편(88%)·연도·arXiv id, 출판 venue 64편(32%, 예: IEEE IoT Journal) 표기. 나머지는 실제 preprint. (`scripts/rebuild_references.py`로 보강 후 재컴파일) |
 
 **특이사항 (재현 시 참고)**
 
@@ -247,6 +247,7 @@ python tasks/workflow/06_gen_latex.py    --task_id $task_id
 - 표 미포함의 원인: 표 자체는 5개 생성됐으나 **중복 콘텐츠 품질 게이트(값 유사도 ≥0.5)에서 전원 기각** — llama의 속성 추출이 반복적인 데서 기인 (버그 아님, `latex_list_table_builder.py`)
 - LaTeX 컴파일은 PATH 최우선의 MiKTeX(패키지 불완전)로 최초 실패 → `.env`의 `SURVEYX_TEX_BIN=/usr/bin`(TeX Live)으로 고정해 해결
 - 최초 산출물의 참고문헌이 제목만 있었던 원인: 공통 코퍼스가 `reference`(BibTeX) 필드를 제공하지 않아 `complete_bib()` 폴백 동작 → 어댑터가 arXiv 메타데이터(+로컬 스냅샷 저자 조인)로 완성형 BibTeX을 채우도록 수정
+- 출판 venue 표기: OpenAlex 미러의 works_locations(6.1억 행)에서 코퍼스 947K편 중 256,760편(27%)의 venue를 `scripts/build_venue_lookup.py`로 1회 추출(`datasets/venue_lookup.parquet`, 3.1MB) → 어댑터가 검색 시 즉시 조인. lookup이 없으면 "arXiv preprint" 폴백
 
 ---
 

@@ -53,7 +53,7 @@ def main():
     ids = [p["arxiv_id"] for p in papers if p["arxiv_id"]]
     print(f"{len(papers)} papers loaded, {len(ids)} with arXiv id")
 
-    # 2. 연도(코퍼스) + 저자(스냅샷) 조회
+    # 2. 연도(코퍼스) + 저자(스냅샷) + 출판 venue(lookup) 조회
     con = duckdb.connect()
     years = dict(
         con.execute(
@@ -69,7 +69,21 @@ def main():
                 "SELECT base_id, authors FROM snap.papers WHERE base_id = ANY(?)", [ids]
             ).fetchall()
         )
-    print(f"matched: year {len(years)}, authors {len(authors)}")
+    venues = {}
+    venue_lookup = Path(
+        os.getenv(
+            "COMMON_CORPUS_VENUE_LOOKUP", str(REPO_ROOT / "datasets" / "venue_lookup.parquet")
+        )
+    )
+    if venue_lookup.exists():
+        venues = dict(
+            con.execute(
+                "SELECT p.arxiv_id, vn.venue FROM read_parquet(?) p "
+                "JOIN read_parquet(?) vn USING (paper_id) WHERE p.arxiv_id = ANY(?)",
+                [str(papers_parquet), str(venue_lookup), ids],
+            ).fetchall()
+        )
+    print(f"matched: year {len(years)}, authors {len(authors)}, venue {len(venues)}")
 
     # 3. 기존 bib_name을 키로 완성형 항목 생성
     entries = [
@@ -79,6 +93,7 @@ def main():
             authors_json=authors.get(p["arxiv_id"]),
             year=years.get(p["arxiv_id"]),
             bib_key=p["bib_name"],
+            venue=venues.get(p["arxiv_id"]),
         )
         for p in papers
     ]
@@ -89,7 +104,11 @@ def main():
         print(f"backup: {backup}")
     bib_path.write_text("\n".join(entries) + "\n", encoding="utf-8")
     enriched = sum(1 for e in entries if "author={" in e)
-    print(f"wrote {len(entries)} entries ({enriched} with authors) to {bib_path}")
+    with_venue = sum(1 for e in entries if "arXiv preprint" not in e)
+    print(
+        f"wrote {len(entries)} entries ({enriched} with authors, "
+        f"{with_venue} with publication venue) to {bib_path}"
+    )
 
 
 if __name__ == "__main__":
