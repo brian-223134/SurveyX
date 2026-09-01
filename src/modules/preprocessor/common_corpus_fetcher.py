@@ -22,6 +22,7 @@ same-corpus 원칙(코퍼스 integration-guide §1)에 따라:
 import hashlib
 import json
 import os
+import re
 import subprocess
 import tempfile
 from pathlib import Path
@@ -37,6 +38,48 @@ except ImportError:
     pass
 
 logger = get_logger("src.modules.preprocessor.CommonCorpusFetcher")
+
+
+def _bibtex_escape(text: str) -> str:
+    """BibTeX 필드 값에서 LaTeX 특수문자를 이스케이프한다."""
+    return re.sub(r"([&%#_$])", r"\\\1", text.replace("\\", "").replace("~", " "))
+
+
+def make_bibtex(
+    arxiv_id: str,
+    title: str,
+    authors_json: str | None,
+    year,
+    bib_key: str | None = None,
+) -> str:
+    """arXiv 메타데이터로 완성형 BibTeX 항목을 만든다.
+
+    첫 줄은 반드시 "@article{key," 형태여야 한다 —
+    DataCleaner.complete_bib()가 첫 줄에서 bib_name을 파싱하기 때문.
+    """
+    key = bib_key or ("arxiv" + re.sub(r"[^0-9A-Za-z]", "_", arxiv_id or "unknown"))
+    lines = [f"@article{{{key},", f"  title={{{_bibtex_escape(title)}}},"]
+    if authors_json:
+        try:
+            names = json.loads(authors_json)
+            if isinstance(names, list) and names:
+                lines.append(f"  author={{{_bibtex_escape(' and '.join(names))}}},")
+        except (json.JSONDecodeError, TypeError):
+            pass
+    if year:
+        lines.append(f"  year={{{year}}},")
+    if arxiv_id:
+        lines += [
+            # 일반 bib 스타일은 eprint/url을 렌더하지 않으므로 journal에도 표기
+            # (원 시스템 출력 형식: "arXiv preprint arXiv:2402.06930")
+            f"  journal={{arXiv preprint arXiv:{arxiv_id}}},",
+            f"  eprint={{{arxiv_id}}},",
+            "  archivePrefix={arXiv},",
+            f"  url={{http://arxiv.org/abs/{arxiv_id}}},",
+        ]
+    lines[-1] = lines[-1].rstrip(",")
+    lines.append("}")
+    return "\n".join(lines)
 
 
 class CommonCorpusFetcher:
@@ -87,6 +130,16 @@ class CommonCorpusFetcher:
 
         self._con = duckdb.connect()
 
+        # authors 보강용 로컬 arXiv 스냅샷 (없어도 동작 — author 필드만 빠짐)
+        self._snapshot_attached = False
+        snapshot_db = os.getenv("ARXIV_SNAPSHOT_DUCKDB", "")
+        if snapshot_db and Path(snapshot_db).exists():
+            try:
+                self._con.execute(f"ATTACH '{snapshot_db}' AS snap (READ_ONLY)")
+                self._snapshot_attached = True
+            except Exception as e:
+                logger.warning(f"arXiv snapshot attach failed ({e}) — authors 없이 진행")
+
     # ---------------------------------------------------------------- search
     def search_on_arxiv(self, key_words: str) -> list[dict]:
         """쉼표로 구분된 키워드 각각을 검색해 _id 기준으로 병합한다.
@@ -116,12 +169,19 @@ class CommonCorpusFetcher:
             + key_word.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
             + "%"
         )
+        authors_col = "s.authors" if self._snapshot_attached else "NULL"
+        authors_join = (
+            "LEFT JOIN snap.papers s ON s.base_id = p.arxiv_id"
+            if self._snapshot_attached
+            else ""
+        )
         rows = self._con.execute(
-            r"""
+            rf"""
             SELECT p.paper_id, p.arxiv_id, p.title, p.abstract,
-                   p.year, p.citation_count
+                   p.year, p.citation_count, {authors_col} AS authors
             FROM read_parquet(?) p
             JOIN read_parquet(?) v USING (paper_id)
+            {authors_join}
             WHERE p.title ILIKE ? ESCAPE '\' OR p.abstract ILIKE ? ESCAPE '\'
             ORDER BY p.citation_count DESC NULLS LAST, p.paper_id
             LIMIT ?
@@ -146,8 +206,10 @@ class CommonCorpusFetcher:
                 "year": year,
                 "citation_count": citation_count,
                 "from": "arxiv",
+                # complete_bib()가 그대로 사용하는 완성형 BibTeX (없으면 제목만 남는 폴백)
+                "reference": make_bibtex(arxiv_id, title, authors, year),
             }
-            for paper_id, arxiv_id, title, abstract, year, citation_count in rows
+            for paper_id, arxiv_id, title, abstract, year, citation_count, authors in rows
         ]
         logger.debug(f"common_corpus: {len(papers)} papers for keyword '{key_word}'")
         self._kw_cache[key_word] = papers

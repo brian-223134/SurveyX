@@ -236,16 +236,17 @@ python tasks/workflow/06_gen_latex.py    --task_id $task_id
 
 | 항목 | 값 |
 |---|---|
-| 분량 | 24페이지, 87,407자 (12,099단어) |
+| 분량 | 27페이지, 103,302자 (14,188단어) |
 | 생성 그림 | TikZ 7개 (구조도 1 + 분류 트리 6) |
-| 참고문헌 | 199편 (`references.bib`) |
+| 참고문헌 | 199편 — 저자 175편(88%)·연도·arXiv id 포함 (`scripts/rebuild_references.py`로 보강 후 재컴파일) |
 
 **특이사항 (재현 시 참고)**
 
 - llama의 JSON 형식 실패로 hint 마운트 누락 10/199편(5%) — gpt-4o 대비 형식 준수력 차이의 실측치
 - 429 rate limit 1회 (tenacity 재시도로 흡수, `CHAT_AGENT_WORKERS=4` 기준)
-- 표 생성 단계는 실행됐으나 최종본에 미포함 — 원인 추적 필요
-- LaTeX 컴파일이 PATH 최우선의 MiKTeX(패키지 불완전)로 실패 → `/usr/bin`의 TeX Live로 재컴파일해 해결. pdflatex 경로 고정 패치 필요
+- 표 미포함의 원인: 표 자체는 5개 생성됐으나 **중복 콘텐츠 품질 게이트(값 유사도 ≥0.5)에서 전원 기각** — llama의 속성 추출이 반복적인 데서 기인 (버그 아님, `latex_list_table_builder.py`)
+- LaTeX 컴파일은 PATH 최우선의 MiKTeX(패키지 불완전)로 최초 실패 → `.env`의 `SURVEYX_TEX_BIN=/usr/bin`(TeX Live)으로 고정해 해결
+- 최초 산출물의 참고문헌이 제목만 있었던 원인: 공통 코퍼스가 `reference`(BibTeX) 필드를 제공하지 않아 `complete_bib()` 폴백 동작 → 어댑터가 arXiv 메타데이터(+로컬 스냅샷 저자 조인)로 완성형 BibTeX을 채우도록 수정
 
 ---
 

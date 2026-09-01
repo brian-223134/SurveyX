@@ -35,6 +35,10 @@ OPENROUTER_ALLOW_FALLBACKS = (
 # LLM HTTP 타임아웃(초). 미설정 시 무한 대기로 파이프라인이 행에 걸릴 수 있다.
 CHAT_REQUEST_TIMEOUT = int(os.getenv("SURVEYX_HTTP_TIMEOUT", "900"))
 
+# LaTeX 컴파일에 사용할 TeX 배포판 bin 디렉터리 (예: /usr/bin).
+# 비우면 PATH 순서를 따른다 — 이 서버는 PATH 앞의 MiKTeX가 패키지 불완전이라 지정 필요.
+TEX_BIN_DIR = os.getenv("SURVEYX_TEX_BIN", "")
+
 LOCAL_URL = "LOCAL_URL"
 LOCAL_LLM = "LOCAL_LLM"
 DEFAULT_EMBED_LOCAL_MODEL = "DEFAULT_EMBED_LOCAL_MODEL"
