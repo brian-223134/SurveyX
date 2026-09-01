@@ -11,6 +11,7 @@ FILE_PATH = Path(__file__).absolute()
 BASE_DIR = FILE_PATH.parent.parent.parent.parent
 sys.path.insert(0, str(BASE_DIR))  # 어느 경로에서 실행해도 동작하도록 설정
 
+from src.configs.config import TEX_BIN_DIR
 from src.configs.constants import OUTPUT_DIR, RESOURCE_DIR
 from src.configs.logger import get_logger
 from src.configs.utils import load_latest_task_id
@@ -85,6 +86,12 @@ class LatexGenerator:
         # sty 파일 준비
         subprocess.run(["cp", sty_file_path, "./neurips_2024.sty"])
 
+        # TEX_BIN_DIR이 설정되면 그 TeX 배포판을 우선 사용
+        # (PATH 앞쪽의 불완전한 배포판 — 예: 패키지 없는 MiKTeX — 회피용)
+        compile_env = os.environ.copy()
+        if TEX_BIN_DIR:
+            compile_env["PATH"] = f"{TEX_BIN_DIR}:{compile_env.get('PATH', '')}"
+
         # latexmk 명령 실행. 출력은 compile.log로 리다이렉트
         with open("compile.log", "w") as output_file:
             logger.debug(
@@ -95,12 +102,15 @@ class LatexGenerator:
                 shell=True,
                 stdout=output_file,
                 stderr=output_file,
+                env=compile_env,
             )
 
         # latexmk -c 를 실행해 중간 파일 삭제
         with open("compile.log", "a") as output_file:
             logger.debug(f'Running "latexmk -c"')
-            subprocess.run("latexmk -c", shell=True, stdout=output_file)
+            subprocess.run(
+                "latexmk -c", shell=True, stdout=output_file, env=compile_env
+            )
 
         # 모든 .bbl 파일 삭제
         subprocess.run("rm *.bbl", shell=True)

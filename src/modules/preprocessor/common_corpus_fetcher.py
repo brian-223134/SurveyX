@@ -22,6 +22,7 @@ same-corpus 원칙(코퍼스 integration-guide §1)에 따라:
 import hashlib
 import json
 import os
+import re
 import subprocess
 import tempfile
 from pathlib import Path
@@ -37,6 +38,53 @@ except ImportError:
     pass
 
 logger = get_logger("src.modules.preprocessor.CommonCorpusFetcher")
+
+
+def _bibtex_escape(text: str) -> str:
+    """BibTeX 필드 값에서 LaTeX 특수문자를 이스케이프한다."""
+    return re.sub(r"([&%#_$])", r"\\\1", text.replace("\\", "").replace("~", " "))
+
+
+def make_bibtex(
+    arxiv_id: str,
+    title: str,
+    authors_json: str | None,
+    year,
+    bib_key: str | None = None,
+    venue: str | None = None,
+) -> str:
+    """arXiv/OpenAlex 메타데이터로 완성형 BibTeX 항목을 만든다.
+
+    첫 줄은 반드시 "@article{key," 형태여야 한다 —
+    DataCleaner.complete_bib()가 첫 줄에서 bib_name을 파싱하기 때문.
+    출판 venue가 있으면 journal에 venue를, 없으면 "arXiv preprint"를 표기.
+    """
+    key = bib_key or ("arxiv" + re.sub(r"[^0-9A-Za-z]", "_", arxiv_id or "unknown"))
+    lines = [f"@article{{{key},", f"  title={{{_bibtex_escape(title)}}},"]
+    if authors_json:
+        try:
+            names = json.loads(authors_json)
+            if isinstance(names, list) and names:
+                lines.append(f"  author={{{_bibtex_escape(' and '.join(names))}}},")
+        except (json.JSONDecodeError, TypeError):
+            pass
+    if year:
+        lines.append(f"  year={{{year}}},")
+    # 일반 bib 스타일은 eprint/url을 렌더하지 않으므로 journal 필드로 표기
+    if venue:
+        lines.append(f"  journal={{{_bibtex_escape(venue)}}},")
+    elif arxiv_id:
+        # 원 시스템 출력 형식: "arXiv preprint arXiv:2402.06930"
+        lines.append(f"  journal={{arXiv preprint arXiv:{arxiv_id}}},")
+    if arxiv_id:
+        lines += [
+            f"  eprint={{{arxiv_id}}},",
+            "  archivePrefix={arXiv},",
+            f"  url={{http://arxiv.org/abs/{arxiv_id}}},",
+        ]
+    lines[-1] = lines[-1].rstrip(",")
+    lines.append("}")
+    return "\n".join(lines)
 
 
 class CommonCorpusFetcher:
@@ -87,6 +135,30 @@ class CommonCorpusFetcher:
 
         self._con = duckdb.connect()
 
+        # authors 보강용 로컬 arXiv 스냅샷 (없어도 동작 — author 필드만 빠짐)
+        self._snapshot_attached = False
+        snapshot_db = os.getenv("ARXIV_SNAPSHOT_DUCKDB", "")
+        if snapshot_db and Path(snapshot_db).exists():
+            try:
+                self._con.execute(f"ATTACH '{snapshot_db}' AS snap (READ_ONLY)")
+                self._snapshot_attached = True
+            except Exception as e:
+                logger.warning(f"arXiv snapshot attach failed ({e}) — authors 없이 진행")
+
+        # 출판 venue lookup (scripts/build_venue_lookup.py로 생성. 없어도 동작 —
+        # journal이 "arXiv preprint" 폴백으로 표기될 뿐)
+        self.venue_lookup = Path(
+            os.getenv(
+                "COMMON_CORPUS_VENUE_LOOKUP",
+                str(Path(BASE_DIR) / "datasets" / "venue_lookup.parquet"),
+            )
+        )
+        if not self.venue_lookup.exists():
+            logger.warning(
+                f"venue lookup 없음({self.venue_lookup}) — "
+                "scripts/build_venue_lookup.py로 생성하면 인용에 출판 venue가 표기됨"
+            )
+
     # ---------------------------------------------------------------- search
     def search_on_arxiv(self, key_words: str) -> list[dict]:
         """쉼표로 구분된 키워드 각각을 검색해 _id 기준으로 병합한다.
@@ -116,12 +188,26 @@ class CommonCorpusFetcher:
             + key_word.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
             + "%"
         )
+        authors_col = "s.authors" if self._snapshot_attached else "NULL"
+        authors_join = (
+            "LEFT JOIN snap.papers s ON s.base_id = p.arxiv_id"
+            if self._snapshot_attached
+            else ""
+        )
+        venue_col, venue_join, params = "NULL", "", []
+        if self.venue_lookup.exists():
+            venue_col = "vn.venue"
+            venue_join = "LEFT JOIN read_parquet(?) vn USING (paper_id)"
+            params = [str(self.venue_lookup)]
         rows = self._con.execute(
-            r"""
+            rf"""
             SELECT p.paper_id, p.arxiv_id, p.title, p.abstract,
-                   p.year, p.citation_count
+                   p.year, p.citation_count, {authors_col} AS authors,
+                   {venue_col} AS venue
             FROM read_parquet(?) p
             JOIN read_parquet(?) v USING (paper_id)
+            {authors_join}
+            {venue_join}
             WHERE p.title ILIKE ? ESCAPE '\' OR p.abstract ILIKE ? ESCAPE '\'
             ORDER BY p.citation_count DESC NULLS LAST, p.paper_id
             LIMIT ?
@@ -129,6 +215,7 @@ class CommonCorpusFetcher:
             [
                 str(self.papers_parquet),
                 str(self.view_parquet),
+                *params,
                 pattern,
                 pattern,
                 self.SINGLE_WORD_LIMIT,
@@ -145,9 +232,12 @@ class CommonCorpusFetcher:
                 "detail_url": f"http://arxiv.org/abs/{arxiv_id}",
                 "year": year,
                 "citation_count": citation_count,
+                "venue": venue,
                 "from": "arxiv",
+                # complete_bib()가 그대로 사용하는 완성형 BibTeX (없으면 제목만 남는 폴백)
+                "reference": make_bibtex(arxiv_id, title, authors, year, venue=venue),
             }
-            for paper_id, arxiv_id, title, abstract, year, citation_count in rows
+            for paper_id, arxiv_id, title, abstract, year, citation_count, authors, venue in rows
         ]
         logger.debug(f"common_corpus: {len(papers)} papers for keyword '{key_word}'")
         self._kw_cache[key_word] = papers

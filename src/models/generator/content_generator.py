@@ -410,9 +410,17 @@ class ContentGenerator(Base):
             for f in os.listdir(papers_dir)
         ]
         main_body = []
+        in_conclusion_section = False
         for line in main_body_raw.splitlines(keepends=True):
-            # "in essence" 등으로 시작하는 문단 제거
-            if any(e in line.lower() for e in filter):
+            # 현재 위치가 Conclusion 섹션인지 추적
+            if r"\section" in line and r"\subsection" not in line:
+                section_name = extract_braced_content(line) or ""
+                in_conclusion_section = "conclusion" in section_name.lower()
+
+            # "in essence" 등으로 시작하는 상투적 마무리 문단 제거.
+            # 단, Conclusion 섹션 본문은 "In conclusion, ..."으로 시작하는 것이
+            # 자연스러우므로 필터를 적용하지 않는다 (결론 전체가 삭제되는 오폭 방지).
+            if not in_conclusion_section and any(e in line.lower() for e in filter):
                 continue
 
             # 유효하지 않은 인용 제거
