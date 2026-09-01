@@ -200,7 +200,7 @@ python tasks/workflow/06_gen_latex.py    --task_id $task_id
 
 ### 9.1 Edge Computing 서베이 1편 생성 (2026-08-31)
 
-공통 코퍼스 어댑터 + OpenRouter 백본 전환 후 첫 엔드투엔드 실행 기록.
+공통 코퍼스 어댑터 + OpenRouter 백본 전환 후 첫 엔드투엔드 실행 기록. 단계별 시간·비용 분해 등 상세 메트릭은 [docs/edge-computing-experiment.md](docs/edge-computing-experiment.md) 참고.
 
 **세팅**
 
@@ -236,7 +236,7 @@ python tasks/workflow/06_gen_latex.py    --task_id $task_id
 
 | 항목 | 값 |
 |---|---|
-| 분량 | 28페이지, 105,382자 (14,544단어) |
+| 분량 | 28페이지, 105,530자 (14,495단어) |
 | 생성 그림 | TikZ 7개 (구조도 1 + 분류 트리 6) |
 | 참고문헌 | 199편 — 저자 175편(88%)·연도·arXiv id, 출판 venue 64편(32%, 예: IEEE IoT Journal) 표기. 나머지는 실제 preprint. (`scripts/rebuild_references.py`로 보강 후 재컴파일) |
 
