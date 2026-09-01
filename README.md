@@ -236,7 +236,7 @@ python tasks/workflow/06_gen_latex.py    --task_id $task_id
 
 | 항목 | 값 |
 |---|---|
-| 분량 | 27페이지, 103,302자 (14,188단어) |
+| 분량 | 28페이지, 105,382자 (14,544단어) |
 | 생성 그림 | TikZ 7개 (구조도 1 + 분류 트리 6) |
 | 참고문헌 | 199편 — 저자 175편(88%)·연도·arXiv id, 출판 venue 64편(32%, 예: IEEE IoT Journal) 표기. 나머지는 실제 preprint. (`scripts/rebuild_references.py`로 보강 후 재컴파일) |
 
@@ -248,6 +248,8 @@ python tasks/workflow/06_gen_latex.py    --task_id $task_id
 - LaTeX 컴파일은 PATH 최우선의 MiKTeX(패키지 불완전)로 최초 실패 → `.env`의 `SURVEYX_TEX_BIN=/usr/bin`(TeX Live)으로 고정해 해결
 - 최초 산출물의 참고문헌이 제목만 있었던 원인: 공통 코퍼스가 `reference`(BibTeX) 필드를 제공하지 않아 `complete_bib()` 폴백 동작 → 어댑터가 arXiv 메타데이터(+로컬 스냅샷 저자 조인)로 완성형 BibTeX을 채우도록 수정
 - 출판 venue 표기: OpenAlex 미러의 works_locations(6.1억 행)에서 코퍼스 947K편 중 256,760편(27%)의 venue를 `scripts/build_venue_lookup.py`로 1회 추출(`datasets/venue_lookup.parquet`, 3.1MB) → 어댑터가 검색 시 즉시 조인. lookup이 없으면 "arXiv preprint" 폴백
+- Conclusion 통삭제 오폭: `post_revise()`의 상투어구 필터("in conclusion" 등 포함 줄 제거)가 llama가 "In conclusion, ..."으로 시작한 결론 본문 전체를 삭제 → Conclusion 섹션 내부는 필터를 건너뛰도록 수정, 기존 산출물은 raw의 결론을 `rewrite_conclusion` 프롬프트로 재작성(LLM 1콜)해 복원
+- 참고문헌 URL 미표기는 원본 SurveyX 출력과 동일한 스타일(`unsrt` 계열은 url/eprint 필드를 렌더하지 않음). bib 파일에는 url이 전부 보존되어 있음
 
 ---
 
