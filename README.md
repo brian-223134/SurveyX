@@ -200,7 +200,7 @@ python tasks/workflow/06_gen_latex.py    --task_id $task_id
 
 ### 9.1 Edge Computing 서베이 1편 생성 (2026-08-31)
 
-공통 코퍼스 어댑터 + OpenRouter 백본 전환 후 첫 엔드투엔드 실행 기록. 단계별 시간·비용 분해 등 상세 메트릭은 [docs/edge-computing-experiment.md](docs/edge-computing-experiment.md) 참고.
+공통 코퍼스 어댑터 + OpenRouter 백본 전환 후 첫 엔드투엔드 실행 기록. 단계별 시간·비용 분해 등 상세 메트릭은 [docs/experiments/edge-computing-experiment.md](docs/experiments/edge-computing-experiment.md) 참고.
 
 **세팅**
 
@@ -250,6 +250,35 @@ python tasks/workflow/06_gen_latex.py    --task_id $task_id
 - 출판 venue 표기: OpenAlex 미러의 works_locations(6.1억 행)에서 코퍼스 947K편 중 256,760편(27%)의 venue를 `scripts/build_venue_lookup.py`로 1회 추출(`datasets/venue_lookup.parquet`, 3.1MB) → 어댑터가 검색 시 즉시 조인. lookup이 없으면 "arXiv preprint" 폴백
 - Conclusion 통삭제 오폭: `post_revise()`의 상투어구 필터("in conclusion" 등 포함 줄 제거)가 llama가 "In conclusion, ..."으로 시작한 결론 본문 전체를 삭제 → Conclusion 섹션 내부는 필터를 건너뛰도록 수정, 기존 산출물은 raw의 결론을 `rewrite_conclusion` 프롬프트로 재작성(LLM 1콜)해 복원
 - 참고문헌 URL 미표기는 원본 SurveyX 출력과 동일한 스타일(`unsrt` 계열은 url/eprint 필드를 렌더하지 않음). bib 파일에는 url이 전부 보존되어 있음
+
+### 9.2 Instruction Tuning 서베이 — 중단된 실행 (2026-09-03)
+
+벤치마크 view `bench-2512`로 전환한 뒤의 첫 실행. **완주하지 못했다.** 상세는
+[docs/experiments/instruction-tuning-aborted-run.md](docs/experiments/instruction-tuning-aborted-run.md).
+
+**세팅**: view `bench-2512`(947,451편, manifest sha `d4c16c49…`), 입력은 `--title`과
+`--key_words` 양쪽에 GT Topic 문자열, task_id `2026-09-03-0333_Instr`.
+
+**문헌 깔때기**: 리콜 1,089편 → 필터 154편 → **전문 확보 41편(실패 113)**
+
+**중단 사유**: arXiv rate limit으로 전문 확보 실패율 **73%**. 41편으로는 이 토픽의
+GT eligible(153편) 대비 reference recall 비교가 성립하지 않아, 비용의 87%를 차지하는
+AttributeTree 진입 직후에 중단했다(소요 19분, 실측 $0.0389).
+
+**알아낸 것**
+
+- 막힌 엔드포인트는 `arxiv.org/e-print`가 아니라 **`export.arxiv.org/api/query`**다.
+  `fetch()`가 다운로드 전에 `latest_version()`으로 API를 한 번 더 치기 때문에 논문 1편당
+  arXiv 호출이 2회이고, 25편 배치는 약 7,500회가 된다 — 배치의 최대 리스크
+- 지수 백오프(15/30/60/120초)는 정상 동작한다. 다만 `fill_md_text()`가 헬퍼 stderr를
+  `returncode != 0`일 때만 기록해 실행 중에는 진단이 보이지 않았다
+- **실패는 캐시에 동결되지 않았다** — `FullTextResolver`는 영구 오류만 `failure.json`으로
+  남기고 429·타임아웃은 남기지 않는다(`resolver.py:72`). 재실행이 곧 재시도다
+- title-only 입력은 topic을 오염시킨다. `generate_topic.md`가 title을 쓰지 않아
+  핵심어가 유실되므로, **`--key_words`에 Topic 문자열을 그대로 시드로 준다**
+
+**재개 절차**: throttle 해제를 API 엔드포인트로 확인 → 파이프라인 밖에서 캐시 프리워밍
+(LLM 비용 $0) → 본 실행. 절차는 위 실험 기록 §6.
 
 ---
 

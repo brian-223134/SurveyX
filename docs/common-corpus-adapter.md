@@ -39,8 +39,11 @@ LIMIT 1000
 
 설계 판단:
 
-- **view JOIN이 컷오프·GT 제외를 강제** — `surveyeval-2512`
-  (cutoff 2025-12-31, GT 서베이 20편 제외)를 기본값으로 사용.
+- **view JOIN이 컷오프·GT 제외를 강제** — 벤치마크 view `bench-2512`
+  (cutoff 2025-12-31, GT 25편의 preprint 쌍둥이 15 id 제외, 947,451편)를 기본값으로 사용.
+  view 이름은 `.env`의 `COMMON_CORPUS_VIEW`로 바꾼다. 2026-08-31 Edge Computing 실행은
+  구 view `surveyeval-2512`(GT 20편 제외)를 썼고, 두 view의 제외 id 집합은 서로 겹치지 않는다
+  — 벤치마크는 반드시 `bench-2512`여야 GT 누수가 없다.
 - **1,000편 초과 시 citation_count 내림차순으로 절단**. 원 인프라(ES)의 절단
   기준은 알 수 없으므로, 무작위 대신 인용수를 사전 순위(prior)로 택했다.
   관련성 판정은 어차피 하류의 coarse(임베딩 Top-200)/fine(LLM) 필터가 수행한다.
@@ -100,7 +103,7 @@ REPRODUCTION.md §3.1에서 식별한 지연 파싱 차단 지점 2곳:
 
 어댑터는 초기화 시 `view_manifest.json`의 sha256을 계산해
 `self.provenance`로 노출하고 로그에 남긴다. 실행 기록/실험 노트에는
-`view=surveyeval-2512, view_manifest_sha256=...`을 함께 기록할 것
+`view=bench-2512, view_manifest_sha256=...`을 함께 기록할 것
 (코퍼스 integration-guide §7 체크리스트).
 
 ## 7. 한계와 후속 작업

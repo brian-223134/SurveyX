@@ -97,7 +97,7 @@ class CommonCorpusFetcher:
             )
         )
         version = os.getenv("COMMON_CORPUS_VERSION", "v0.1-poc")
-        self.view_name = os.getenv("COMMON_CORPUS_VIEW", "surveyeval-2512")
+        self.view_name = os.getenv("COMMON_CORPUS_VIEW", "bench-2512")
         self.corpus_python = os.getenv(
             "COMMON_CORPUS_PYTHON",
             "/data2/chanjoong/miniforge3/envs/asg-corpus/bin/python",
