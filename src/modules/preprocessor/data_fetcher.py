@@ -428,14 +428,27 @@ def get_data_fetcher(enable_cache: bool = DEFAULT_DATA_FETCHER_ENABLE_CACHE):
     """SURVEYX_DATA_SOURCE 환경변수에 따라 데이터 소스 구현을 선택한다.
 
     - "common_corpus": asg-common-corpus 어댑터 (로컬 parquet + view)
+    - "kisti": KISTI SDL 파생 스토어 어댑터 (kisti_data/adapter, KISTI_ADAPTER_DIR)
     - 그 외/미설정: 원본 DataFetcher (사내 크롤러 인프라 — 현재 동작 불가)
     """
     import os
 
-    if os.getenv("SURVEYX_DATA_SOURCE", "").replace("-", "_") == "common_corpus":
+    source = os.getenv("SURVEYX_DATA_SOURCE", "").replace("-", "_")
+    if source == "common_corpus":
         from src.modules.preprocessor.common_corpus_fetcher import CommonCorpusFetcher
 
         return CommonCorpusFetcher(enable_cache=enable_cache)
+    if source == "kisti":
+        # KISTI SDL 파생 스토어 어댑터 (kisti_data/adapter/surveyx/kisti_fetcher.py).
+        # view parquet + body_store만 읽으므로 surveyx env(duckdb 1.3.2)에서 직접 동작한다.
+        import sys
+
+        adapter_dir = os.getenv("KISTI_ADAPTER_DIR", "/data2/chanjoong/kisti_data/adapter")
+        if adapter_dir not in sys.path:
+            sys.path.insert(0, adapter_dir)
+        from surveyx.kisti_fetcher import KistiFetcher
+
+        return KistiFetcher(enable_cache=enable_cache)
     return DataFetcher(enable_cache=enable_cache)
 
 
