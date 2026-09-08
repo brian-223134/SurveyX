@@ -7,7 +7,7 @@ KISTI corpus(view `kisti-2512`) + 디코딩 프로파일(temperature 0.6 · max_
 | 항목 | 값 | 8/31 edge (bench-2512, 참고) |
 |---|---|---|
 | topic | Visual Adversarial Attacks and Defenses in the Physical World (sec #3, GT CSUR 10.1145/3793659, ceiling 68%) | A Survey on Edge Computing |
-| **view** | **kisti-2512 v1** (papers.parquet `c7b8d4e7`, 1,651,701편, 제외 키 38) — 검색 05:36~05:41 UTC, v2 교체는 08:08 UTC | surveyeval-2512 (common corpus) |
+| **view** | **kisti-2512 v1 = `c7b8d4e7 / 2026-09-07T05:10:55Z`** (1,651,701편, 제외 키 38) — 검색 05:36~05:41 UTC, v2(`591b4325 / 2026-09-08T07:01:07Z`) 교체는 08:08 UTC | surveyeval-2512 (common corpus) |
 | 소요 | **151.7분** (05:36 → 08:08) | 186분 |
 | 비용 | TokenMonitor **$1.43** (실측 키 차분 $2.66은 귀속 불가, §3) | $1.89 (실측 $2.28) |
 | 문헌 깔때기 | 리콜 1,003 → coarse 200 → fine 196 → 원문 196/196 | 1,318 → 200 → 199 |

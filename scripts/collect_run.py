@@ -119,21 +119,27 @@ def norm_title(s: str) -> str:
 def view_snapshot(view: str) -> dict:
     """지금 이 순간의 view 정체성. run_kisti.py 가 실행 **시작 시점**에 찍어 metrics/view.snapshot.json 으로
     남긴다 — view 는 같은 경로에서 교체될 수 있어(2026-09-08 v1→v2) 수집 시점에 다시 재면 틀린다.
-    version 은 papers.parquet sha256 앞 8자(kisti_data 노티의 표기: v1 c7b8d4e7 · v2 591b4325)."""
+
+    버전 표기(4 agent 공통 규약, kisti_data AGENT-HANDOFF §0, 43bab51):
+      view_manifest.json 의 files_sha256.papers.parquet 앞 8자 + created_at
+      v1 = c7b8d4e7 / 2026-09-07T05:10:55Z · v2 = 591b4325 / 2026-09-08T07:01:07Z
+    view_diff_manifest.json 은 FAISS 인덱스(AutoSurvey·SurveyForge)의 파생 기록이라 여기서는 읽지 않는다."""
     vdir = KISTI_ROOT / "data" / "views" / view
     manifest = read_json(vdir / "view_manifest.json") or {}
     files = manifest.get("files_sha256") or {}
-    diff = read_json(vdir / "view_diff_manifest.json") or {}
     excl = vdir / "exclude_keys.txt"
+    sha8 = (files.get("papers.parquet") or "")[:8] or None
+    created = manifest.get("created_at")
+    created_z = created.replace("+00:00", "Z") if isinstance(created, str) else None
     return {
         "view": view,
         "view_dir": str(vdir),
         "manifest_sha256": sha256_file(vdir / "view_manifest.json"),
         "papers_parquet_sha256": files.get("papers.parquet"),
-        "version": (files.get("papers.parquet") or "")[:8] or None,
+        "version": sha8,
+        "version_label": f"{sha8} / {created_z}" if sha8 and created_z else sha8,
         "view_papers": (manifest.get("counts") or {}).get("view_papers"),
-        "manifest_created_at": manifest.get("created_at"),
-        "diff_created_at": diff.get("created_at"),          # 같은 경로에서 교체된 경우 그 시각
+        "manifest_created_at": created,
         "exclude_keys": (len([l for l in excl.read_text(encoding="utf-8").splitlines() if l.strip()])
                          if excl.exists() else None),
         "captured_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -539,11 +545,11 @@ def build(task_id: str, request_stats: Path | None = None) -> dict:
         "data_source": data_source,
         "view": view,
         "view_version": vsnap.get("version"),                       # papers.parquet sha 앞 8자 (v1 c7b8d4e7 · v2 591b4325)
+        "view_version_label": vsnap.get("version_label"),           # 4 agent 공통 버전 열: "<sha8> / <created_at>"
         "view_papers_parquet_sha256": vsnap.get("papers_parquet_sha256"),
         "view_manifest_sha256": vsnap.get("manifest_sha256"),
         "view_papers": vsnap.get("view_papers"),
         "view_manifest_created_at": vsnap.get("manifest_created_at"),
-        "view_diff_created_at": vsnap.get("diff_created_at"),
         "view_source": view_source,
         "package": package,
         "fulltext_limit": env_sel.get("KISTI_FULLTEXT_LIMIT"),
@@ -584,8 +590,9 @@ def table() -> str:
         r = read_json(Path(p), {})
         s, rq, sc, lk = r.get("structure", {}), r.get("requests", {}), r.get("score") or {}, r.get("leak", {})
         dur = f"{r['duration_sec'] // 60}m" if r.get("duration_sec") else "-"
-        rows.append("| {tid} | {topic} | {cost} | {meas} | {dur} | {sec}/{sub} · {w} | {refs} ({ax}/{doi}) | {dps} | {td}/{ta} | {e429} | {rec}/{prec} (n={n}) | {leak} |".format(
+        rows.append("| {tid} | {topic} | {view} | {cost} | {meas} | {dur} | {sec}/{sub} · {w} | {refs} ({ax}/{doi}) | {dps} | {td}/{ta} | {e429} | {rec}/{prec} (n={n}) | {leak} |".format(
             tid=r.get("task_id"), topic=(r.get("topic") or "")[:40],
+            view=(r.get("view_version_label") or r.get("view_version") or "-"),
             cost=f"${r.get('cost_total_usd', 0):.2f}",
             meas=(f"${r['cost_measured_usd']:.2f}" if r.get("cost_measured_usd") is not None else "-"),
             dur=dur, sec=s.get("sections"), sub=s.get("subsections"), w=s.get("words"),
@@ -598,8 +605,8 @@ def table() -> str:
             n=r.get("gt", {}).get("n_gt_refs_in_view") if r.get("gt") else "-",
             leak=("clean" if lk.get("clean") else "LEAK"),
         ))
-    head = ("| task_id | topic | cost(TM) | cost(실측) | 소요 | sec/sub · words | refs (arXiv/DOI) | draft/sub "
-            "| 잘림 폐기/채택 | 429 | recall/precision | 누수 |\n|---|---|---|---|---|---|---|---|---|---|---|---|")
+    head = ("| task_id | topic | view (sha8 / created_at) | cost(TM) | cost(실측) | 소요 | sec/sub · words | refs (arXiv/DOI) | draft/sub "
+            "| 잘림 폐기/채택 | 429 | recall/precision | 누수 |\n|---|---|---|---|---|---|---|---|---|---|---|---|---|")
     return head + "\n" + "\n".join(rows)
 
 
