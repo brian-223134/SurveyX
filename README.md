@@ -207,6 +207,8 @@ $PY scripts/collect_run.py --table                            # 편당 run.json 
 ## 9. 실험 결과
 
 > 2026-09-07부로 corpus를 KISTI DB(view `kisti-2512`)로 바꿨습니다. 실행 조건(백본·temperature 0.6·max_tokens 8192·잘림 재요청)과 편당 기록 절차는 [docs/kisti-run.md](docs/kisti-run.md)가 현행 정본입니다. 아래 9.1·9.2는 asg-common-corpus 시절의 기록이며 KISTI 결과와 같은 표에 놓지 않습니다.
+>
+> **9.3 KISTI 파일럿 1편 (2026-09-08)** — physical-adversarial-attacks: 152분 · TM $1.43 · 6섹션/22소절/16쪽 · 인용 69편 · recall 3.4% / precision 7.2%(GT in-view 149편) · 누수 0 · 잘림 0. plain text 원문으로 파이프라인 전 단계 동작 확인, DOI id 파일명 버그 발견·수정. 상세: [docs/experiments/kisti-2512-pilot-physical-adversarial-attacks.md](docs/experiments/kisti-2512-pilot-physical-adversarial-attacks.md), 매니페스트 `outputs/2026-09-08-0536_Visua/run.json`.
 
 ### 9.1 Edge Computing 서베이 1편 생성 (2026-08-31)
 

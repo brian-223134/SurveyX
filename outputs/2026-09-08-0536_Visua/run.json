@@ -1,0 +1,253 @@
+{
+  "schema": "surveyx.run.v1",
+  "generated_at": "2026-09-08 09:24:00",
+  "task_id": "2026-09-08-0536_Visua",
+  "topic": "Visual Adversarial Attacks and Defenses in the Physical World",
+  "key_words_expanded": "Visual Adversarial Attacks and Defenses in the Physical World, Adversarial Examples, Physical World Attacks, Computer Vision Security",
+  "args": "--title \"Visual Adversarial Attacks and Defenses in the Physical World\" --key_words \"Visual Adversarial Attacks and Defenses in the Physical World\"",
+  "status": "ok",
+  "returncode": 0,
+  "started_at": "2026-09-08 05:35:59",
+  "ended_at": "2026-09-08 08:08:00",
+  "log_path": "outputs/logs/kisti_visual-adversarial-attacks-and-defenses-in-the-physical-worl_20260908-053559.log",
+  "model": "meta-llama/llama-3.3-70b-instruct",
+  "advanced_model": "meta-llama/llama-3.3-70b-instruct",
+  "provider_pin": "akashml/fp8",
+  "allow_fallbacks": "false",
+  "temperature": "0.6",
+  "max_tokens": "8192…",
+  "retry_truncated": "true",
+  "max_truncated_retry": "10",
+  "env_source": "metrics/env.snapshot.json",
+  "data_source": "kisti",
+  "view": "kisti-2512",
+  "view_manifest_sha256": "7c727499ce71daf6f6ded3e52a161a203d312ded85c25c0b53dd08961a2944e7",
+  "package": "science_datalake_260825",
+  "fulltext_limit": null,
+  "git": {
+    "surveyx": {
+      "head": "accc2ac",
+      "dirty": true
+    },
+    "kisti_data": {
+      "head": "1884fb2",
+      "dirty": true
+    }
+  },
+  "stages": {
+    "recall paper": {
+      "in_tokens": 8892,
+      "out_tokens": 117,
+      "cost_usd": 0.0014
+    },
+    "filter paper": {
+      "in_tokens": 166809,
+      "out_tokens": 2876,
+      "cost_usd": 0.0267
+    },
+    "clean paper": {
+      "in_tokens": 4886849,
+      "out_tokens": 441117,
+      "cost_usd": 0.9977
+    },
+    "generate outline": {
+      "in_tokens": 243929,
+      "out_tokens": 28672,
+      "cost_usd": 0.0538
+    },
+    "generate content": {
+      "in_tokens": 1480898,
+      "out_tokens": 159734,
+      "cost_usd": 0.318
+    },
+    "section rewrite": {
+      "in_tokens": 48457,
+      "out_tokens": 20448,
+      "cost_usd": 0.0195
+    },
+    "Template figure builder": {
+      "in_tokens": 55557,
+      "out_tokens": 3466,
+      "cost_usd": 0.0104
+    },
+    "generate table": {
+      "in_tokens": 4396,
+      "out_tokens": 44,
+      "cost_usd": 0.0007
+    }
+  },
+  "stage_durations_sec": {
+    "retrieve paper": 102.97,
+    "fetch fulltext": 3.18,
+    "filter paper": 184.35,
+    "clean paper": 3997.38,
+    "generate outline": 343.57,
+    "generate content": 3926.01,
+    "generate tabel": 8.11,
+    "post refine": 525.11,
+    "compile latex": 5.95
+  },
+  "cost_total_usd": 1.4282,
+  "cost_measured_usd": 2.6626,
+  "duration_sec": 9102,
+  "requests": {
+    "available": true,
+    "records": 1566,
+    "ok": 1506,
+    "http_errors": {
+      "429": 59,
+      "503": 1
+    },
+    "http_error_total": 60,
+    "truncated_discarded": 0,
+    "truncated_accepted": 0,
+    "draft_calls": 127,
+    "truncated_discarded_by_template": {}
+  },
+  "requests_by_template": {
+    "preprocessor/attri_tree_for_method.md": 445,
+    "preprocessor/judge_relevance.md": 200,
+    "preprocessor/paper_type_classification.md": 196,
+    "outline_generator/mout_paper_on_plain_outline.md": 196,
+    "content_generator/mount_tree_on_outlines.md": 196,
+    "content_generator/fulfill_content.md": 127,
+    "preprocessor/attri_tree_for_survey.md": 50,
+    "preprocessor/PaperRecall_gen_key_word.md": 18,
+    "preprocessor/attri_tree_for_benchmark.md": 18,
+    "latex_figure_builder/extract_tiny_tree_architect.md": 14,
+    "section_rewriter/compress_sections.md": 13,
+    "preprocessor/attri_tree_for_theory.md": 11,
+    "outline_generator/write_secondary_outline.md": 5,
+    "content_generator/write_section_words.md": 3,
+    "latex_table_builder/find_method_section.md": 3,
+    "latex_figure_builder/add_intro.md": 2,
+    "preprocessor/generate_keyword.md": 1,
+    "preprocessor/generate_topic.md": 1,
+    "outline_generator/write_primary_outline.md": 1,
+    "outline_generator/deduplicate_subsection.md": 1,
+    "outline_generator/reorganize_outline.md": 1,
+    "content_generator/write_abstract.md": 1,
+    "section_rewriter/introduction_compression.md": 1,
+    "section_rewriter/rewrite_conclusion.md": 1,
+    "latex_table_builder/find_benchmark_section.md": 1
+  },
+  "truncated_calls": 0,
+  "truncation_retries": 0,
+  "draft_calls_per_subsection": 5.77,
+  "structure": {
+    "sections": 6,
+    "subsections": 22,
+    "words": 5001,
+    "from_tex": true,
+    "references": 69,
+    "references_bib_total": 196,
+    "citation_runs": 247,
+    "pdf_pages": 16
+  },
+  "refs": {
+    "basis": "cited entries only (references.bib holds the whole filtered pool)",
+    "arxiv": 35,
+    "doi": 34,
+    "other": 0,
+    "match_keys": [
+      "10.1002/widm.1567",
+      "10.1007/978-3-030-62460-6_42",
+      "10.1007/s10489-022-03469-5",
+      "10.1007/s11042-023-15383-0",
+      "10.1007/s13042-021-01435-0",
+      "10.1016/j.jai.2023.10.002",
+      "10.1016/j.patcog.2018.07.023",
+      "10.1016/j.patcog.2022.109009",
+      "10.1016/j.patcog.2022.109048",
+      "10.1109/access.2019.2958358",
+      "10.1109/cvpr.2019.00790",
+      "10.1109/cvpr46437.2021.00846",
+      "10.1109/icassp40776.2020.9054475",
+      "10.1109/iccv48922.2021.00070",
+      "10.1109/iccv48922.2021.00741",
+      "10.1109/icip40778.2020.9190904",
+      "10.1109/isvlsi.2018.00092",
+      "10.1109/mdat.2020.2968274",
+      "10.1109/tifs.2022.3155975",
+      "10.1109/tii.2022.3169973",
+      "10.1145/3319535.3354222",
+      "10.1145/3433210.3437513",
+      "10.1145/3460319.3464822",
+      "10.1145/3485832.3485899",
+      "10.1145/3501769",
+      "10.1145/3627817",
+      "10.1145/3631977",
+      "10.1145/3702638",
+      "10.1155/2020/8319249",
+      "10.14722/ndss.2018.23198",
+      "10.14722/ndss.2019.23202",
+      "10.1609/aaai.v36i6.20650",
+      "10.24963/ijcai.2019/385",
+      "10.3390/e22111201",
+      "10.48550/arxiv.1610.00768",
+      "10.48550/arxiv.1707.03501",
+      "10.48550/arxiv.1707.07397",
+      "10.48550/arxiv.1707.08945",
+      "10.48550/arxiv.1710.10766",
+      "10.48550/arxiv.1712.02494",
+      "10.48550/arxiv.1712.07107",
+      "10.48550/arxiv.1801.00634",
+      "10.48550/arxiv.1801.02612",
+      "10.48550/arxiv.1803.04683",
+      "10.48550/arxiv.1804.03286",
+      "10.48550/arxiv.1804.07757",
+      "10.48550/arxiv.1804.08598",
+      "10.48550/arxiv.1806.04169",
+      "10.48550/arxiv.1810.00069",
+      "10.48550/arxiv.1810.07339",
+      "10.48550/arxiv.1811.00525",
+      "10.48550/arxiv.1901.10513",
+      "10.48550/arxiv.1902.11019",
+      "10.48550/arxiv.1903.10586",
+      "10.48550/arxiv.1904.07793",
+      "10.48550/arxiv.1905.03421",
+      "10.48550/arxiv.1905.11026",
+      "10.48550/arxiv.1908.02435",
+      "10.48550/arxiv.1910.11099",
+      "10.48550/arxiv.1911.05268",
+      "10.48550/arxiv.2001.02297",
+      "10.48550/arxiv.2001.03460",
+      "10.48550/arxiv.2001.11137",
+      "10.48550/arxiv.2002.03095",
+      "10.48550/arxiv.2002.03500",
+      "10.48550/arxiv.2010.14974",
+      "10.48550/arxiv.2102.01356",
+      "10.48550/arxiv.2106.10807",
+      "10.48550/arxiv.2201.11528"
+    ]
+  },
+  "gt": {
+    "domain": "security",
+    "slug": "physical-adversarial-attacks",
+    "gt_doi": "10.1145/3793659",
+    "gt_title": "Visual Adversarial Attacks and Defenses in the Physical World: A Survey",
+    "n_gt_refs_eligible": 150,
+    "n_gt_refs_in_view": 149
+  },
+  "score": {
+    "denominator": "GT refs ∩ in_view (candidates/gap_to_80_refs.jsonl tier==in_view)",
+    "refs_identifiable": 69,
+    "hits": 5,
+    "recall": 0.0336,
+    "precision": 0.0725,
+    "hit_keys": [
+      "10.1109/cvpr46437.2021.00846",
+      "10.14722/ndss.2018.23198",
+      "10.48550/arxiv.1712.02494",
+      "10.48550/arxiv.1803.04683",
+      "10.48550/arxiv.1810.00069"
+    ]
+  },
+  "leak": {
+    "exclude_keys": 40,
+    "ids_in_refs": [],
+    "ids_in_text": [],
+    "gt_title_in_bib": [],
+    "clean": true
+  }
+}

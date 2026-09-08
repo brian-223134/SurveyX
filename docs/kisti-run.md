@@ -14,14 +14,14 @@ SurveyX 쪽 **현행 정본**이다. corpus·adapter·topic·평가 규약의 �
 | 출력 분량 | 통제하지 않는다. SurveyX 기본값(섹션·소절 수, 단어 수, refs 수는 agent 속성으로 기록) |
 | 실행 | `scripts/run_kisti.py --slug <slug>` 또는 `--all` (§4). 파이프라인 코드는 `tasks/full_run.py` 그대로 |
 | 기록 | 편당 `outputs/<task_id>/run.json` (`scripts/collect_run.py`, §5). `.gitignore` 예외로 커밋에 들어간다 |
-| 진행 | 25편 본배치 **미착수**. 1편 파일럿(plain text 원문의 AttributeTree 확인) 선행 |
+| 진행 | **1편 파일럿 완료**(2026-09-08, sec #3 physical-adversarial-attacks: 152분 · TM $1.43 · 인용 69 · recall 3.4% / precision 7.2% · 누수 0 · 잘림 0) — [experiments/kisti-2512-pilot-physical-adversarial-attacks.md](experiments/kisti-2512-pilot-physical-adversarial-attacks.md). 25편 본배치 **미착수**(§6) |
 
 ## 1. 데이터 소스 — KISTI adapter
 
 - 분기: `src/modules/preprocessor/data_fetcher.py::get_data_fetcher()` (`5b19afe`). `KISTI_ADAPTER_DIR`(기본 `/data2/chanjoong/kisti_data/adapter`)를 `sys.path`에 넣고 `surveyx.kisti_fetcher.KistiFetcher`를 쓴다. surveyx env(duckdb 1.3.2)에서 parquet·sqlite만 읽으므로 subprocess 위임이 없다.
 - id는 불투명 키다(arXiv base id 또는 DOI 문자열). BibTeX는 arXiv면 `eprint`/`arxiv.org/abs`, DOI면 `doi`/`doi.org`. `collect_run.py`는 이 두 필드에서 평가용 매칭 키(`doi` ∨ `10.48550/arxiv.<base id>`)를 만든다.
 - **DOI id 함정(수정됨, 2026-09-08)**: `save_papers`가 `_id`를 파일명으로 그대로 써서 DOI의 `/`가 하위 디렉터리를 만들었고, `DataCleaner.load_json_dir`은 최상위 `.json`만 읽어 첫 파일럿에서 필터 통과 150편 중 **DOI 논문 84편이 통째로 사라졌다**(arXiv 66편만 AttributeTree 진입). `safe_filename()`으로 파일명만 치환한다(`_id` 값은 그대로, 파일명은 목록으로만 읽힘). 중단 실행은 `outputs/aborted-doi-path-bug-2026-09-08-0528_Visua/`에 보관. 회귀 테스트 `tests/test_preprocessor_utils.py`.
-- 원문은 s2orc/pmc 추출 plain text다. AttributeTree 프롬프트가 markdown 구조를 기대하는지는 **1편 파일럿에서 확인**할 것(미확인).
+- 원문은 s2orc/pmc 추출 plain text다. **파일럿으로 확인(2026-09-08)**: DataCleaner·AttributeTree·outline 매핑 모두 동작. AttributeTree JSON 파싱 실패(3패스 후 attri 보유 21%)는 8/31 markdown 원문에서도 37%였던 llama 고유 현상이라 원문 형식 탓이 아니다(파일럿 기록 §4.2).
 - 스모크: `SURVEYX_DATA_SOURCE=kisti PYTHONPATH=/data2/chanjoong/kisti_data/adapter $PY -m surveyx.kisti_fetcher`
 
 ## 2. 8/31 실측 — 프로파일 결정의 근거
@@ -96,10 +96,10 @@ $PY scripts/run_kisti.py --all --dry-run                            # 명령만 
 | `stages` `cost_total_usd` `stage_durations_sec` `duration_sec` | `token_monitor.json` · `time_monitor.json` | 소요는 첫 단계 시작 → 마지막 단계 끝(LaTeX 컴파일 제외) |
 | `cost_measured_usd` | `metrics/credits.json` | OpenRouter 키 사용액 전후 차분 |
 | `requests` `requests_by_template` `truncated_calls` `truncation_retries` `draft_calls_per_subsection` | `metrics/request_stats.txt` | status별 수, 429 수, 템플릿별 호출 수(요청 prefix 200자 매칭), draft = `fulfill_content(_iteratively)` |
-| `structure` | `latex/survey.tex` · `references.bib` · `survey.pdf` | sections/subsections/words(AutoSurvey `check_survey.measure`와 같은 계산), references(bib 항목)·references_cited(본문 `\cite` 유니크)·citation_runs·pdf_pages |
-| `refs.{arxiv,doi,other,match_keys}` | `references.bib` | 매칭 키 = `doi` 소문자 ∨ `10.48550/arxiv.<base id>` |
+| `structure` | `latex/survey.tex`(+`\input` tex) · `references.bib` · `survey.pdf` | sections/subsections/words(AutoSurvey `check_survey.measure`와 같은 계산), **references = 인용된 항목 수**(unsrt가 찍는 참고문헌 목록), references_bib_total = bib 전편(필터 통과 풀), citation_runs, pdf_pages |
+| `refs.{arxiv,doi,other,match_keys}` | `references.bib` ∩ 본문 인용 | **인용된 항목만.** SurveyX의 bib에는 필터 통과 전편(예: 196편)이 들어가므로 전편으로 세면 recall·precision이 부풀려진다(파일럿: 전편 기준 16.8%/12.8% → 인용 기준 3.4%/7.2%). 매칭 키 = `doi` 소문자 ∨ `10.48550/arxiv.<base id>` |
 | `gt` `score` | `kisti_data/data/topics.kisti.jsonl` · `candidates/gap_to_80_refs.jsonl`(`tier == in_view`) | recall = 적중/분모(in_view), precision = 적중/identifiable refs. topic이 25편 밖이면 null |
-| `leak` | view `exclude_keys.txt` 38키 · GT 제목 | 키가 refs 매칭 키·본문/bib 원문에 0회, GT 제목이 bib title에 0회 → `clean: true`. 제목 검사는 bib에만(topic 문자열이 GT 제목에서 왔으므로 본문엔 당연히 나온다) |
+| `leak` | view `exclude_keys.txt` 38키 · GT 제목 | 키가 **bib 전편**(=검색 풀)의 매칭 키·본문/bib 원문에 0회, GT 제목이 bib title에 0회 → `clean: true`. 미인용이라도 풀에 들어오면 누수다. 제목 검사는 bib에만(topic 문자열이 GT 제목에서 왔으므로 본문엔 당연히 나온다) |
 
 AutoSurvey `run.json`과 겹치는 키(`topic` `args` `model` `provider_pin` `stages` `cost_total_usd` `truncated_calls` `truncation_retries` `structure` `duration_sec`)는 이름을 맞췄다.
 
@@ -119,9 +119,10 @@ API 호출·파이프라인 실행 없이 mock 으로 위 동작을 고정한다
 
 ## 6. 예산·주의
 
-- 편당 예상 약 2.5h(8/31의 3h07m에서 전문 확보 24분 제외) · $2.3 실측 기준 → 25편 ≈ **60h · $57**. OpenRouter 키 잔여는 09-03 기준 $7.6 — **키 한도 상향 없이는 배치 불가**.
-- 동시성은 `CHAT_AGENT_WORKERS=4` 유지. akashml 429는 tenacity가 흡수한다.
-- plain text 원문 파일럿(§1) 전에는 배치를 시작하지 않는다.
+- 파일럿 실측 편당 **152분 · TM $1.43** → 25편 ≈ **63h · $36**(429 재시도 포함). OpenRouter 키 잔여 $2.57(09-08 08:08) — **키 한도 상향 없이는 배치 불가**.
+- **키 분리**: 실측 비용(`cost_measured_usd`)은 키 단위 차분이라 같은 키로 다른 agent가 동시에 돌면 오염된다(파일럿에서 SurveyForge와 겹쳐 $2.66 vs TM $1.43). agent별 키 또는 순차 실행.
+- **AttributeTree JSON 복구 여부**(파일럿 기록 §6-1)를 결정한 뒤 배치를 시작한다. 넣지 않으면 llama에서 논문 21~37%만 속성 트리를 가진 채 돈다.
+- 동시성은 `CHAT_AGENT_WORKERS=4` 유지. akashml 429(파일럿 59건)는 tenacity가 흡수한다.
 - 결과표에는 topic ceiling·run-to-run 오차(±1.7%p 잠정)·refs 수를 병기하고, corpus가 다른 과거 실험(bench-2512 edge/instruction tuning)과 같은 표에 놓지 않는다.
 
 ## 7. 결정 로그
@@ -135,7 +136,9 @@ API 호출·파이프라인 실행 없이 mock 으로 위 동작을 고정한다
 | 09-08 | 편당 run.json(`collect_run.py`)·runner(`run_kisti.py`), 파이프라인 코드 무변경 | §4·§5 |
 | 09-08 | `.env` 데이터 소스 kisti로 전환, 스모크 통과 | §1 |
 | 09-08 | `save_papers` 파일명 치환(DOI `/`) — 첫 파일럿 중단·재실행 | §1. 파이프라인 코드 변경이지만 동작 변화 없는 호환 수정 |
-| 09-08 | mock 단위 테스트 `tests/` 34건 | §5.1 |
+| 09-08 | mock 단위 테스트 `tests/` 35건 | §5.1 |
+| 09-08 | 파일럿 1편 완료 — plain text 동작 확인, DOI 파일명 외 결함 없음 | `experiments/kisti-2512-pilot-physical-adversarial-attacks.md` |
+| 09-08 | run.json의 refs·recall/precision을 **인용된 항목** 기준으로(bib 전편 아님), 누수는 bib 전편 기준 | §5. 전편 기준은 recall 5배 과대 |
 
 ## 8. 관련 문서
 
