@@ -1,0 +1,17 @@
+{
+  "before": {
+    "label": "before:visual-adversarial-attacks-and-defenses-in-the-physical-worl",
+    "at": "2026-09-08 05:35:59",
+    "key_used_usd": 24.7635,
+    "account_used_usd": 3407.5547,
+    "raw": "2026-09-08 05:35:59 [before:visual-adversarial-attacks-and-defenses-in-the-physical-worl]  account: purchased=$4100.5500  used=$3407.5547  remaining=$692.9953\n2026-09-08 05:35:59 [before:visual-adversarial-attacks-and-defenses-in-the-physical-worl]  key(sk-or-v1-f7a...e3f): limit=$30.00  used=$24.7635  today=$0.1364  remaining=$5.2365"
+  },
+  "after": {
+    "label": "after:visual-adversarial-attacks-and-defenses-in-the-physical-worl",
+    "at": "2026-09-08 08:08:01",
+    "key_used_usd": 27.4261,
+    "account_used_usd": 3423.131,
+    "raw": "2026-09-08 08:08:01 [after:visual-adversarial-attacks-and-defenses-in-the-physical-worl]  account: purchased=$4100.5500  used=$3423.1310  remaining=$677.4190\n2026-09-08 08:08:01 [after:visual-adversarial-attacks-and-defenses-in-the-physical-worl]  key(sk-or-v1-f7a...e3f): limit=$30.00  used=$27.4261  today=$2.7990  remaining=$2.5739"
+  },
+  "measured_usd": 2.6626
+}

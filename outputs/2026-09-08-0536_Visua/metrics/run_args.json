@@ -1,0 +1,9 @@
+{
+  "args": "--title \"Visual Adversarial Attacks and Defenses in the Physical World\" --key_words \"Visual Adversarial Attacks and Defenses in the Physical World\"",
+  "status": "ok",
+  "returncode": 0,
+  "started_at": "2026-09-08 05:35:59",
+  "ended_at": "2026-09-08 08:08:00",
+  "log_path": "outputs/logs/kisti_visual-adversarial-attacks-and-defenses-in-the-physical-worl_20260908-053559.log",
+  "python": "/data2/chanjoong/miniforge3/envs/surveyx/bin/python"
+}

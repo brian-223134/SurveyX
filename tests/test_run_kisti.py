@@ -139,6 +139,9 @@ class RunKistiTest(unittest.TestCase):
         self.assertFalse(self.stats.exists())                        # 전역 파일은 옮겨졌다
         snap = json.loads((m / "env.snapshot.json").read_text(encoding="utf-8"))
         self.assertEqual(snap["SURVEYX_TEMPERATURE"], "0.6")
+        vsnap = json.loads((m / "view.snapshot.json").read_text(encoding="utf-8"))
+        self.assertEqual(vsnap["view"], "kisti-2512")          # 시작 시점 view 정체성 (fixture 엔 manifest 없음 → sha None)
+        self.assertIn("captured_at", vsnap)
         self.assertEqual(json.loads((m / "credits.json").read_text(encoding="utf-8"))["measured_usd"], 2.5)
         args = json.loads((m / "run_args.json").read_text(encoding="utf-8"))
         self.assertEqual(args["status"], "ok")

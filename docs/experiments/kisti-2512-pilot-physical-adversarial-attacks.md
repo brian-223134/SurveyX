@@ -7,6 +7,7 @@ KISTI corpus(view `kisti-2512`) + 디코딩 프로파일(temperature 0.6 · max_
 | 항목 | 값 | 8/31 edge (bench-2512, 참고) |
 |---|---|---|
 | topic | Visual Adversarial Attacks and Defenses in the Physical World (sec #3, GT CSUR 10.1145/3793659, ceiling 68%) | A Survey on Edge Computing |
+| **view** | **kisti-2512 v1** (papers.parquet `c7b8d4e7`, 1,651,701편, 제외 키 38) — 검색 05:36~05:41 UTC, v2 교체는 08:08 UTC | surveyeval-2512 (common corpus) |
 | 소요 | **151.7분** (05:36 → 08:08) | 186분 |
 | 비용 | TokenMonitor **$1.43** (실측 키 차분 $2.66은 귀속 불가, §3) | $1.89 (실측 $2.28) |
 | 문헌 깔때기 | 리콜 1,003 → coarse 200 → fine 196 → 원문 196/196 | 1,318 → 200 → 199 |
@@ -22,6 +23,7 @@ KISTI corpus(view `kisti-2512`) + 디코딩 프로파일(temperature 0.6 · max_
 - 코드: SurveyX `accc2ac` (+ 이 기록과 함께 커밋한 `collect_run.py`의 인용 기준 수정), adapter `kisti_data` `b92e60b`, view manifest sha `eb569600…`.
 - `.env`: `SURVEYX_DATA_SOURCE=kisti`, `SURVEYX_TEMPERATURE=0.6`, `SURVEYX_MAX_TOKENS=8192`, `SURVEYX_RETRY_TRUNCATED=true`(10회), provider `akashml/fp8`, workers 4, `CUDA_VISIBLE_DEVICES=4`.
 - 명령: `scripts/run_kisti.py --slug physical-adversarial-attacks` → `tasks/full_run.py --title "<Topic>" --key_words "<Topic>"`.
+- **view v1**. kisti_data 노티(2026-09-08)에 따라 08:08 UTC부터 같은 경로가 v2(GT 사본 2편·arXiv 2601.* 212편 제외)로 바뀌었다. 이 실행의 검색은 05:36~05:41이라 v1이다. 사후 확인: 풀(bib 196편)과 본문에 arXiv `2601.*`은 0편, v2에서 새로 제외된 2키(`2507.16731`, `10.1109/comst.2025.3648785`)도 0회 — v1/v2 차이가 이 편의 결과에 영향을 주지 않는다. `metrics/view.snapshot.json`은 보존본 `kisti-2512-v1/`에서 재구성했다(run.json을 09:37에 재생성하며 v2 sha가 찍혔던 것을 바로잡음). 분모(in_view 149)와 GT refs는 v2에서도 그대로.
 - **첫 시도(05:28)는 7분 만에 중단**: `save_papers`가 DOI id의 `/`를 경로로 만들어 DOI 논문 84/150편이 AttributeTree에 들어가지 않았다(`outputs/aborted-doi-path-bug-2026-09-08-0528_Visua/`, TM $0.089). `safe_filename()`으로 고친 뒤(`16a2317`) 05:36 재실행이 이 기록이다.
 
 ## 2. 단계별 시간·비용

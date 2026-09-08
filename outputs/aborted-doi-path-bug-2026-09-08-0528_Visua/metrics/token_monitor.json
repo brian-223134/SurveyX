@@ -1,0 +1,23 @@
+{
+    "recall paper": {
+        "meta-llama/llama-3.3-70b-instruct": {
+            "input_tokens": 71442,
+            "output_tokens": 112,
+            "total_cost": 0.0107835
+        }
+    },
+    "filter paper": {
+        "meta-llama/llama-3.3-70b-instruct": {
+            "input_tokens": 165330,
+            "output_tokens": 10432,
+            "total_cost": 0.0310587
+        }
+    },
+    "clean paper": {
+        "meta-llama/llama-3.3-70b-instruct": {
+            "input_tokens": 253204,
+            "output_tokens": 15916,
+            "total_cost": 0.0475302
+        }
+    }
+}
