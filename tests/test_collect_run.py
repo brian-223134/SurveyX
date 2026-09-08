@@ -298,7 +298,9 @@ class CollectRunTest(unittest.TestCase):
         r = collect_run.build(self.task_id)
         self.assertEqual(r["view"], "kisti-2512")
         self.assertEqual(r["view_version"], "c7b8d4e7")
+        self.assertEqual(r["view_version_label"], "c7b8d4e7 / 2026-09-07T05:10:55Z")   # 4 agent 공통 버전 열
         self.assertEqual(r["view_papers"], 1651701)
+        self.assertIn("| c7b8d4e7 / 2026-09-07T05:10:55Z |", collect_run.table() if collect_run.write_run(self.task_id) else "")
         self.assertTrue(r["view_source"].startswith("metrics/view.snapshot.json"))
         self.assertTrue(r["leak"]["keys_from"].endswith("kisti-2512-v1"))
         self.assertFalse(r["leak"]["clean"])
