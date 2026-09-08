@@ -20,6 +20,7 @@ SurveyX 쪽 **현행 정본**이다. corpus·adapter·topic·평가 규약의 �
 
 - 분기: `src/modules/preprocessor/data_fetcher.py::get_data_fetcher()` (`5b19afe`). `KISTI_ADAPTER_DIR`(기본 `/data2/chanjoong/kisti_data/adapter`)를 `sys.path`에 넣고 `surveyx.kisti_fetcher.KistiFetcher`를 쓴다. surveyx env(duckdb 1.3.2)에서 parquet·sqlite만 읽으므로 subprocess 위임이 없다.
 - id는 불투명 키다(arXiv base id 또는 DOI 문자열). BibTeX는 arXiv면 `eprint`/`arxiv.org/abs`, DOI면 `doi`/`doi.org`. `collect_run.py`는 이 두 필드에서 평가용 매칭 키(`doi` ∨ `10.48550/arxiv.<base id>`)를 만든다.
+- **DOI id 함정(수정됨, 2026-09-08)**: `save_papers`가 `_id`를 파일명으로 그대로 써서 DOI의 `/`가 하위 디렉터리를 만들었고, `DataCleaner.load_json_dir`은 최상위 `.json`만 읽어 첫 파일럿에서 필터 통과 150편 중 **DOI 논문 84편이 통째로 사라졌다**(arXiv 66편만 AttributeTree 진입). `safe_filename()`으로 파일명만 치환한다(`_id` 값은 그대로, 파일명은 목록으로만 읽힘). 중단 실행은 `outputs/aborted-doi-path-bug-2026-09-08-0528_Visua/`에 보관. 회귀 테스트 `tests/test_preprocessor_utils.py`.
 - 원문은 s2orc/pmc 추출 plain text다. AttributeTree 프롬프트가 markdown 구조를 기대하는지는 **1편 파일럿에서 확인**할 것(미확인).
 - 스모크: `SURVEYX_DATA_SOURCE=kisti PYTHONPATH=/data2/chanjoong/kisti_data/adapter $PY -m surveyx.kisti_fetcher`
 
@@ -102,6 +103,20 @@ $PY scripts/run_kisti.py --all --dry-run                            # 명령만 
 
 AutoSurvey `run.json`과 겹치는 키(`topic` `args` `model` `provider_pin` `stages` `cost_total_usd` `truncated_calls` `truncation_retries` `structure` `duration_sec`)는 이름을 맞췄다.
 
+## 5.1 테스트 — `tests/`
+
+API 호출·파이프라인 실행 없이 mock 으로 위 동작을 고정한다(pytest 없이 표준 unittest).
+
+```bash
+/data2/chanjoong/miniforge3/envs/surveyx/bin/python -m unittest discover -s tests -v
+```
+
+| 파일 | 검증 |
+|---|---|
+| `tests/test_chat_agent.py` | temperature 오버라이드(호출부 0.3 → 0.6, batch 포함), max_tokens 전송/미전송, 잘림 폐기→재요청→정상(status 2·2·1), 소진 시 채택(status 3), 재요청 off, 폐기 응답 토큰 가산, HTTP 오류 status 0, 기록 파일 첫 줄 중복 없음 |
+| `tests/test_collect_run.py` | 구조·refs id 유형·매칭 키(버전 제거·소문자), in_view 분모의 recall/precision, 누수(twin id·GT 제목) 검출과 clean, 요청 기록(status·429·템플릿 매칭·draft/소절), env 스냅샷 부재 시 null, `--table` |
+| `tests/test_run_kisti.py` | 요청 기록 회전, task 디렉터리 탐색, `--skip-done` 판정, 크레딧 파싱, run_topic 이 metrics 4종과 run.json 을 남김(성공·실패·task 디렉터리 없음) |
+
 ## 6. 예산·주의
 
 - 편당 예상 약 2.5h(8/31의 3h07m에서 전문 확보 24분 제외) · $2.3 실측 기준 → 25편 ≈ **60h · $57**. OpenRouter 키 잔여는 09-03 기준 $7.6 — **키 한도 상향 없이는 배치 불가**.
@@ -119,6 +134,8 @@ AutoSurvey `run.json`과 겹치는 키(`topic` `args` `model` `provider_pin` `st
 | 09-08 | `contains_markdown` 루프 무변경, 사후 집계 | §2·§3. 소절당 4.1회 실측, temp 0.6에서 자기 제한 |
 | 09-08 | 편당 run.json(`collect_run.py`)·runner(`run_kisti.py`), 파이프라인 코드 무변경 | §4·§5 |
 | 09-08 | `.env` 데이터 소스 kisti로 전환, 스모크 통과 | §1 |
+| 09-08 | `save_papers` 파일명 치환(DOI `/`) — 첫 파일럿 중단·재실행 | §1. 파이프라인 코드 변경이지만 동작 변화 없는 호환 수정 |
+| 09-08 | mock 단위 테스트 `tests/` 34건 | §5.1 |
 
 ## 8. 관련 문서
 

@@ -170,7 +170,9 @@ def run_topic(title: str, dry_run: bool = False, allow_source: bool = False) -> 
         "args": f'--title "{title}" --key_words "{title}"', "status": status, "returncode": proc.returncode,
         "started_at": datetime.fromtimestamp(started).strftime(FMT),
         "ended_at": datetime.fromtimestamp(ended).strftime(FMT),
-        "log_path": str(log_path.relative_to(REPO_ROOT)), "python": sys.executable,
+        "log_path": (str(log_path.relative_to(REPO_ROOT)) if log_path.is_relative_to(REPO_ROOT)
+                     else str(log_path)),
+        "python": sys.executable,
     }, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     if REQUEST_STATS.exists():
         shutil.move(str(REQUEST_STATS), str(metrics / "request_stats.txt"))

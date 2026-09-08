@@ -81,8 +81,10 @@ def sha256_file(path: Path) -> str | None:
 
 def git_state(repo: Path) -> dict:
     try:
-        head = subprocess.check_output(["git", "-C", str(repo), "rev-parse", "--short", "HEAD"], text=True).strip()
-        dirty = bool(subprocess.check_output(["git", "-C", str(repo), "status", "--porcelain"], text=True).strip())
+        head = subprocess.check_output(["git", "-C", str(repo), "rev-parse", "--short", "HEAD"], text=True,
+                                       stderr=subprocess.DEVNULL).strip()
+        dirty = bool(subprocess.check_output(["git", "-C", str(repo), "status", "--porcelain"], text=True,
+                                             stderr=subprocess.DEVNULL).strip())
         return {"head": head, "dirty": dirty}
     except Exception:
         return {"head": None, "dirty": None}
