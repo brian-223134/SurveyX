@@ -1,0 +1,65 @@
+{
+    "recall paper": {
+        "meta-llama/llama-3.3-70b-instruct": {
+            "input_tokens": 1458,
+            "output_tokens": 17,
+            "total_cost": 0.0002289
+        }
+    },
+    "filter paper": {
+        "meta-llama/llama-3.3-70b-instruct": {
+            "input_tokens": 165054,
+            "output_tokens": 1600,
+            "total_cost": 0.0257181
+        }
+    },
+    "clean paper": {
+        "meta-llama/llama-3.3-70b-instruct": {
+            "input_tokens": 6133097,
+            "output_tokens": 396378,
+            "total_cost": 1.15779135
+        }
+    },
+    "generate outline": {
+        "meta-llama/llama-3.3-70b-instruct": {
+            "input_tokens": 309139,
+            "output_tokens": 38936,
+            "total_cost": 0.06973245
+        }
+    },
+    "generate content": {
+        "meta-llama/llama-3.3-70b-instruct": {
+            "input_tokens": 2520085,
+            "output_tokens": 177444,
+            "total_cost": 0.48447915
+        }
+    },
+    "Rag refine": {
+        "meta-llama/llama-3.3-70b-instruct": {
+            "input_tokens": 13552,
+            "output_tokens": 2973,
+            "total_cost": 0.0038166
+        }
+    },
+    "section rewrite": {
+        "meta-llama/llama-3.3-70b-instruct": {
+            "input_tokens": 87098,
+            "output_tokens": 135332,
+            "total_cost": 0.0942639
+        }
+    },
+    "Template figure builder": {
+        "meta-llama/llama-3.3-70b-instruct": {
+            "input_tokens": 166103,
+            "output_tokens": 8736,
+            "total_cost": 0.03015705
+        }
+    },
+    "generate table": {
+        "meta-llama/llama-3.3-70b-instruct": {
+            "input_tokens": 123228,
+            "output_tokens": 4606,
+            "total_cost": 0.0212478
+        }
+    }
+}

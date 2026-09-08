@@ -137,6 +137,10 @@ def run_topic(title: str, dry_run: bool = False, allow_source: bool = False) -> 
 
     LOG_DIR.mkdir(parents=True, exist_ok=True)
     rotate_request_stats()
+    # view 정체성은 시작 시점에 찍는다 — 같은 경로에서 교체될 수 있다(2026-09-08 v1→v2, 파일럿 수집이 그 직후였다)
+    vsnap = collect_run.view_snapshot(view)
+    log(f"view snapshot: version={vsnap.get('version')} papers={vsnap.get('view_papers')} "
+        f"manifest={str(vsnap.get('manifest_sha256'))[:8]} exclude_keys={vsnap.get('exclude_keys')}")
     before = credits_snapshot(f"before:{slug}")
     started = time.time()
     with log_path.open("w", encoding="utf-8") as fw:
@@ -160,6 +164,8 @@ def run_topic(title: str, dry_run: bool = False, allow_source: bool = False) -> 
     metrics.mkdir(parents=True, exist_ok=True)
     (metrics / "env.snapshot.json").write_text(json.dumps(env_masked, indent=2, ensure_ascii=False) + "\n",
                                                encoding="utf-8")
+    (metrics / "view.snapshot.json").write_text(json.dumps(vsnap, indent=2, ensure_ascii=False) + "\n",
+                                                encoding="utf-8")
     measured = None
     if before and after and before.get("key_used_usd") is not None and after.get("key_used_usd") is not None:
         measured = round(after["key_used_usd"] - before["key_used_usd"], 4)
@@ -182,7 +188,8 @@ def run_topic(title: str, dry_run: bool = False, allow_source: bool = False) -> 
         r = json.loads(out.read_text(encoding="utf-8"))
         s, sc, lk = r["structure"], r.get("score") or {}, r["leak"]
         log(f"run.json: {out}")
-        log(f"  cost TM ${r['cost_total_usd']} · measured {r.get('cost_measured_usd')} · "
+        log(f"  view {r.get('view')}@{r.get('view_version')} · "
+            f"cost TM ${r['cost_total_usd']} · measured {r.get('cost_measured_usd')} · "
             f"{s['sections']}/{s['subsections']} · {s['words']} words · refs {s['references']} · "
             f"draft/sub {r.get('draft_calls_per_subsection')} · trunc {r['truncation_retries']}/{r['truncated_calls']} · "
             f"recall {sc.get('recall')} precision {sc.get('precision')} · leak {'clean' if lk['clean'] else 'LEAK!'}")

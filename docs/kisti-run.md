@@ -20,6 +20,7 @@ SurveyX 쪽 **현행 정본**이다. corpus·adapter·topic·평가 규약의 �
 
 - 분기: `src/modules/preprocessor/data_fetcher.py::get_data_fetcher()` (`5b19afe`). `KISTI_ADAPTER_DIR`(기본 `/data2/chanjoong/kisti_data/adapter`)를 `sys.path`에 넣고 `surveyx.kisti_fetcher.KistiFetcher`를 쓴다. surveyx env(duckdb 1.3.2)에서 parquet·sqlite만 읽으므로 subprocess 위임이 없다.
 - id는 불투명 키다(arXiv base id 또는 DOI 문자열). BibTeX는 arXiv면 `eprint`/`arxiv.org/abs`, DOI면 `doi`/`doi.org`. `collect_run.py`는 이 두 필드에서 평가용 매칭 키(`doi` ∨ `10.48550/arxiv.<base id>`)를 만든다.
+- **view 버전(2026-09-08 08:08 UTC부터 v2)**: 같은 경로 `data/views/kisti-2512/`의 내용이 v1(1,651,701편, papers.parquet sha `c7b8d4e7`)에서 v2(1,651,487편, `591b4325`)로 교체됐다. v2는 GT 본체 사본 2편(`2507.16731`, `10.1109/comst.2025.3648785`)과 cutoff 이후 arXiv 2601.* 212편(KISTI year 오기재)을 뺀 것이고 제외 키는 38 → 40. `KistiFetcher`는 프로세스마다 parquet를 읽으므로 08:08 이후 시작한 실행은 자동으로 v2다. **기록 규칙**: `run_kisti.py`가 실행 **시작 시점**에 `metrics/view.snapshot.json`(manifest sha·papers.parquet sha·편수·제외 키 수)을 찍고 `run.json.view_version`에 papers.parquet sha 앞 8자를 적는다. 수집 시점에 다시 재면 안 된다 — 파일럿 run.json을 09:37에 재생성했을 때 v2 sha가 찍혔던 것을 스냅샷 재구성으로 바로잡았다. 누수 검사 키도 그 sha와 일치하는 디렉터리(보존본 `kisti-2512-v1/` 포함)에서 읽는다.
 - **DOI id 함정(수정됨, 2026-09-08)**: `save_papers`가 `_id`를 파일명으로 그대로 써서 DOI의 `/`가 하위 디렉터리를 만들었고, `DataCleaner.load_json_dir`은 최상위 `.json`만 읽어 첫 파일럿에서 필터 통과 150편 중 **DOI 논문 84편이 통째로 사라졌다**(arXiv 66편만 AttributeTree 진입). `safe_filename()`으로 파일명만 치환한다(`_id` 값은 그대로, 파일명은 목록으로만 읽힘). 중단 실행은 `outputs/aborted-doi-path-bug-2026-09-08-0528_Visua/`에 보관. 회귀 테스트 `tests/test_preprocessor_utils.py`.
 - 원문은 s2orc/pmc 추출 plain text다. **파일럿으로 확인(2026-09-08)**: DataCleaner·AttributeTree·outline 매핑 모두 동작. AttributeTree JSON 파싱 실패(3패스 후 attri 보유 21%)는 8/31 markdown 원문에서도 37%였던 llama 고유 현상이라 원문 형식 탓이 아니다(파일럿 기록 §4.2).
 - 스모크: `SURVEYX_DATA_SOURCE=kisti PYTHONPATH=/data2/chanjoong/kisti_data/adapter $PY -m surveyx.kisti_fetcher`
@@ -93,14 +94,15 @@ $PY scripts/run_kisti.py --all --dry-run                            # 명령만 
 |---|---|---|
 | `topic` `key_words_expanded` `args` `status` `started_at` `log_path` | `tmp_config.json` · `metrics/run_args.json` | |
 | `model` `provider_pin` `temperature` `max_tokens` `retry_truncated` `data_source` `view` `fulltext_limit` | `metrics/env.snapshot.json` | 스냅샷이 없으면 **null** — 현재 `.env`로 대체하지 않는다(그 실행의 조건이 아니므로). `env_source`에 표시 |
-| `view_manifest_sha256` `package` `git.{surveyx,kisti_data}` | view manifest 파일 sha256 · adapter `PACKAGE_VERSION` · 두 저장소 HEAD/dirty | |
+| `view_version` `view_papers_parquet_sha256` `view_manifest_sha256` `view_papers` `view_manifest_created_at` `view_source` | `metrics/view.snapshot.json` (실행 시작 시점, `run_kisti.py`) | **version = papers.parquet sha 앞 8자** (v1 `c7b8d4e7` · v2 `591b4325`). 스냅샷이 없으면 현재 디렉터리로 재고 `view_source`에 post hoc 표시 |
+| `package` `git.{surveyx,kisti_data}` | adapter `PACKAGE_VERSION` · 두 저장소 HEAD/dirty | |
 | `stages` `cost_total_usd` `stage_durations_sec` `duration_sec` | `token_monitor.json` · `time_monitor.json` | 소요는 첫 단계 시작 → 마지막 단계 끝(LaTeX 컴파일 제외) |
 | `cost_measured_usd` | `metrics/credits.json` | OpenRouter 키 사용액 전후 차분 |
 | `requests` `requests_by_template` `truncated_calls` `truncation_retries` `draft_calls_per_subsection` | `metrics/request_stats.txt` | status별 수, 429 수, 템플릿별 호출 수(요청 prefix 200자 매칭), draft = `fulfill_content(_iteratively)` |
 | `structure` | `latex/survey.tex`(+`\input` tex) · `references.bib` · `survey.pdf` | sections/subsections/words(AutoSurvey `check_survey.measure`와 같은 계산), **references = 인용된 항목 수**(unsrt가 찍는 참고문헌 목록), references_bib_total = bib 전편(필터 통과 풀), citation_runs, pdf_pages |
 | `refs.{arxiv,doi,other,match_keys}` | `references.bib` ∩ 본문 인용 | **인용된 항목만.** SurveyX의 bib에는 필터 통과 전편(예: 196편)이 들어가므로 전편으로 세면 recall·precision이 부풀려진다(파일럿: 전편 기준 16.8%/12.8% → 인용 기준 3.4%/7.2%). 매칭 키 = `doi` 소문자 ∨ `10.48550/arxiv.<base id>` |
 | `gt` `score` | `kisti_data/data/topics.kisti.jsonl` · `candidates/gap_to_80_refs.jsonl`(`tier == in_view`) | recall = 적중/분모(in_view), precision = 적중/identifiable refs. topic이 25편 밖이면 null |
-| `leak` | view `exclude_keys.txt` 38키 · GT 제목 | 키가 **bib 전편**(=검색 풀)의 매칭 키·본문/bib 원문에 0회, GT 제목이 bib title에 0회 → `clean: true`. 미인용이라도 풀에 들어오면 누수다. 제목 검사는 bib에만(topic 문자열이 GT 제목에서 왔으므로 본문엔 당연히 나온다) |
+| `leak` | 그 실행이 쓴 view의 `exclude_keys.txt`(v1 38 · v2 40키, `keys_from`에 디렉터리) · GT 제목 | 키가 **bib 전편**(=검색 풀)의 매칭 키·본문/bib 원문에 0회, GT 제목이 bib title에 0회 → `clean: true`. 미인용이라도 풀에 들어오면 누수다. 제목 검사는 bib에만(topic 문자열이 GT 제목에서 왔으므로 본문엔 당연히 나온다) |
 
 AutoSurvey `run.json`과 겹치는 키(`topic` `args` `model` `provider_pin` `stages` `cost_total_usd` `truncated_calls` `truncation_retries` `structure` `duration_sec`)는 이름을 맞췄다.
 
@@ -141,6 +143,7 @@ API 호출·파이프라인 실행 없이 mock 으로 위 동작을 고정한다
 | 09-08 | 파일럿 1편 완료 — plain text 동작 확인, DOI 파일명 외 결함 없음 | `experiments/kisti-2512-pilot-physical-adversarial-attacks.md` |
 | 09-08 | run.json의 refs·recall/precision을 **인용된 항목** 기준으로(bib 전편 아님), 누수는 bib 전편 기준 | §5. 전편 기준은 recall 5배 과대 |
 | 09-08 | AttributeTree JSON 복구(`repair_json_text`) 도입, 프롬프트 원문 유지 | §3. 실패 원인이 프롬프트 예시의 형식 오류로 특정됨 |
+| 09-08 | view 정체성은 실행 시작 시점 스냅샷으로 기록(`view_version` = papers.parquet sha 앞 8자). 파일럿은 **v1** | §1. kisti_data 노티(08:08 UTC v1→v2). metrics JSON을 커밋 대상에 포함 |
 
 ## 8. 관련 문서
 

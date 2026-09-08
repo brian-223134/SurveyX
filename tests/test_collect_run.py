@@ -281,6 +281,36 @@ class CollectRunTest(unittest.TestCase):
         self.assertIn("66.7%/66.7% (n=3)", table)
         self.assertIn("| clean |", table)
 
+    def test_view_snapshot_resolves_preserved_view_dir(self):
+        """같은 경로에서 view 가 교체된 뒤에도, 실행 시작 시점 스냅샷의 manifest sha 로 보존본(-v1)을 찾아
+        그 exclude_keys 로 누수를 검사하고 version 은 스냅샷 값을 쓴다."""
+        views = self.kisti / "data" / "views"
+        v1 = views / "kisti-2512-v1"
+        v1.mkdir()
+        (v1 / "view_manifest.json").write_text(json.dumps({
+            "view_name": "kisti-2512", "created_at": "2026-09-07T05:10:55+00:00",
+            "counts": {"view_papers": 1651701}, "files_sha256": {"papers.parquet": "c7b8d4e7" + "0" * 56}}),
+            encoding="utf-8")
+        (v1 / "exclude_keys.txt").write_text("10.48550/arxiv.1712.09665\ttwin:1712.09665\n", encoding="utf-8")  # k1 = 누수
+        snap = collect_run.view_snapshot("kisti-2512-v1")
+        snap["view"] = "kisti-2512"
+        (self.outputs / self.task_id / "metrics" / "view.snapshot.json").write_text(json.dumps(snap), encoding="utf-8")
+        r = collect_run.build(self.task_id)
+        self.assertEqual(r["view"], "kisti-2512")
+        self.assertEqual(r["view_version"], "c7b8d4e7")
+        self.assertEqual(r["view_papers"], 1651701)
+        self.assertTrue(r["view_source"].startswith("metrics/view.snapshot.json"))
+        self.assertTrue(r["leak"]["keys_from"].endswith("kisti-2512-v1"))
+        self.assertFalse(r["leak"]["clean"])
+        self.assertEqual(r["leak"]["exclude_keys"], 1)
+
+    def test_view_without_snapshot_uses_current_dir_and_flags_it(self):
+        r = collect_run.build(self.task_id)
+        self.assertTrue(r["view_source"].startswith("current view dir"))
+        self.assertIsNone(r["view_version"])                 # fixture manifest 에 files_sha256 없음
+        self.assertTrue(r["leak"]["keys_from"].endswith("kisti-2512"))
+        self.assertEqual(r["leak"]["exclude_keys"], 2)
+
     def test_attri_summary_from_log(self):
         log = self.tmp / "run.log"
         log.write_text("x\n... - attribute tree: 150/196 papers have attri (repaired 118, unresolved 46 after 3 passes)\n",

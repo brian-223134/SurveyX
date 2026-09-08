@@ -7,6 +7,10 @@ outputs/**
 !outputs/*/survey_wtmk.pdf
 # 편당 실행 매니페스트 (scripts/collect_run.py) — 산출물과 같은 커밋에 넣는다
 !outputs/*/run.json
+# 편당 metrics 의 작은 JSON(토큰·시간·env/view 스냅샷·크레딧·인자)도 함께. request_stats.txt(수백 KB)는 제외
+!outputs/*/metrics/
+outputs/*/metrics/*
+!outputs/*/metrics/*.json
 
 # tmp directory
 tmp/

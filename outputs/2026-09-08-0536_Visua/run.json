@@ -1,6 +1,6 @@
 {
   "schema": "surveyx.run.v1",
-  "generated_at": "2026-09-08 09:37:21",
+  "generated_at": "2026-09-08 09:47:50",
   "task_id": "2026-09-08-0536_Visua",
   "topic": "Visual Adversarial Attacks and Defenses in the Physical World",
   "key_words_expanded": "Visual Adversarial Attacks and Defenses in the Physical World, Adversarial Examples, Physical World Attacks, Computer Vision Security",
@@ -21,16 +21,22 @@
   "env_source": "metrics/env.snapshot.json",
   "data_source": "kisti",
   "view": "kisti-2512",
-  "view_manifest_sha256": "7c727499ce71daf6f6ded3e52a161a203d312ded85c25c0b53dd08961a2944e7",
+  "view_version": "c7b8d4e7",
+  "view_papers_parquet_sha256": "c7b8d4e71d2467a7ee86c6353e784a5ece00e29a6c597602415a5c8a8ba777bc",
+  "view_manifest_sha256": "eb569600d1ebf0b0ed84630e8761b58a12d3dc7a2f98f2978bb25e4c9d3dd362",
+  "view_papers": 1651701,
+  "view_manifest_created_at": "2026-09-07T05:10:55+00:00",
+  "view_diff_created_at": null,
+  "view_source": "metrics/view.snapshot.json (실행 시작 시점)",
   "package": "science_datalake_260825",
   "fulltext_limit": null,
   "git": {
     "surveyx": {
-      "head": "6d788e7",
+      "head": "6fd0471",
       "dirty": true
     },
     "kisti_data": {
-      "head": "32c130d",
+      "head": "4662a1d",
       "dirty": false
     }
   },
@@ -245,10 +251,11 @@
     ]
   },
   "leak": {
-    "exclude_keys": 40,
+    "exclude_keys": 38,
     "ids_in_refs": [],
     "ids_in_text": [],
     "gt_title_in_bib": [],
-    "clean": true
+    "clean": true,
+    "keys_from": "/data2/chanjoong/kisti_data/data/views/kisti-2512-v1"
   }
 }

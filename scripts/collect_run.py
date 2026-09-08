@@ -115,6 +115,44 @@ def norm_title(s: str) -> str:
     return re.sub(r"[^a-z0-9]", "", (s or "").lower())
 
 
+# --------------------------------------------------------------------------- view identity
+def view_snapshot(view: str) -> dict:
+    """지금 이 순간의 view 정체성. run_kisti.py 가 실행 **시작 시점**에 찍어 metrics/view.snapshot.json 으로
+    남긴다 — view 는 같은 경로에서 교체될 수 있어(2026-09-08 v1→v2) 수집 시점에 다시 재면 틀린다.
+    version 은 papers.parquet sha256 앞 8자(kisti_data 노티의 표기: v1 c7b8d4e7 · v2 591b4325)."""
+    vdir = KISTI_ROOT / "data" / "views" / view
+    manifest = read_json(vdir / "view_manifest.json") or {}
+    files = manifest.get("files_sha256") or {}
+    diff = read_json(vdir / "view_diff_manifest.json") or {}
+    excl = vdir / "exclude_keys.txt"
+    return {
+        "view": view,
+        "view_dir": str(vdir),
+        "manifest_sha256": sha256_file(vdir / "view_manifest.json"),
+        "papers_parquet_sha256": files.get("papers.parquet"),
+        "version": (files.get("papers.parquet") or "")[:8] or None,
+        "view_papers": (manifest.get("counts") or {}).get("view_papers"),
+        "manifest_created_at": manifest.get("created_at"),
+        "diff_created_at": diff.get("created_at"),          # 같은 경로에서 교체된 경우 그 시각
+        "exclude_keys": (len([l for l in excl.read_text(encoding="utf-8").splitlines() if l.strip()])
+                         if excl.exists() else None),
+        "captured_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+    }
+
+
+def resolve_view_dir(snapshot: dict | None, view: str) -> tuple[Path, bool]:
+    """스냅샷의 manifest sha 와 같은 view 디렉터리(교체 전 보존본 `<view>-v1` 등 포함)를 찾는다.
+    (디렉터리, 일치 여부). 없으면 현재 디렉터리를 돌려주고 False."""
+    views_dir = KISTI_ROOT / "data" / "views"
+    current = views_dir / view
+    want = (snapshot or {}).get("manifest_sha256")
+    if want:
+        for cand in sorted(views_dir.glob(f"{view}*")):
+            if cand.is_dir() and sha256_file(cand / "view_manifest.json") == want:
+                return cand, True
+    return current, False
+
+
 def arxiv_base(aid: str) -> str:
     return re.sub(r"v\d+$", "", aid.strip())
 
@@ -311,8 +349,8 @@ def gt_title(domain: str, slug: str) -> str | None:
         return None
 
 
-def load_exclude_keys(view: str) -> list[tuple[str, str]]:
-    p = KISTI_ROOT / "data" / "views" / view / "exclude_keys.txt"
+def load_exclude_keys(view_dir: Path) -> list[tuple[str, str]]:
+    p = view_dir / "exclude_keys.txt"
     if not p.exists():
         return []
     out = []
@@ -324,10 +362,11 @@ def load_exclude_keys(view: str) -> list[tuple[str, str]]:
     return out
 
 
-def leak_check(view: str, ref_entries: list[dict], texts: str, gt_title_str: str | None) -> dict:
-    """GT 본체·twin 키(38개)가 refs 매칭 키·본문/bib 원문에 0회인지, GT 제목이 bib title 에 없는지.
+def leak_check(view_dir: Path, ref_entries: list[dict], texts: str, gt_title_str: str | None) -> dict:
+    """GT 본체·twin 키(v1 38개 · v2 40개)가 refs 매칭 키·본문/bib 원문에 0회인지, GT 제목이 bib title 에 없는지.
+    키는 그 실행이 실제로 쓴 view 디렉터리(resolve_view_dir)에서 읽는다.
     제목 검사는 bib 에만 한다 — topic 문자열이 GT 제목에서 왔으므로 본문에는 당연히 나온다."""
-    keys = load_exclude_keys(view)
+    keys = load_exclude_keys(view_dir)
     ref_match = {e["match_key"] for e in ref_entries if e["match_key"]}
     low = texts.lower()
     in_refs, in_text = [], []
@@ -451,14 +490,22 @@ def build(task_id: str, request_stats: Path | None = None) -> dict:
             "precision": round(len(hits) / len(ref_match), 4) if ref_match else None,
             "hit_keys": hits,
         }
+    # ---- view 정체성: 실행 시작 시점 스냅샷 우선. 없으면 현재 디렉터리로 재고 출처를 표시한다.
+    vsnap = read_json(metrics / "view.snapshot.json")
+    view_source = "metrics/view.snapshot.json (실행 시작 시점)"
+    if vsnap is None:
+        vsnap = view_snapshot(view)
+        view_source = "current view dir (post hoc — 같은 경로에서 view 가 교체됐다면 틀릴 수 있음)"
+    view_dir, view_dir_matches = resolve_view_dir(vsnap, view)
+
     texts = ""
     for p in (tex, bib):
         if p.exists():
             texts += p.read_text(encoding="utf-8", errors="replace") + "\n"
-    leak = leak_check(view, bib_all, texts, gt_title_str)
+    leak = leak_check(view_dir, bib_all, texts, gt_title_str)
+    leak["keys_from"] = str(view_dir) + ("" if view_dir_matches else " (스냅샷과 다른 view — 보존본 없음)")
 
     # ---- provenance
-    view_dir = KISTI_ROOT / "data" / "views" / view
     package = None
     try:
         sys.path.insert(0, str(ADAPTER_DIR))
@@ -491,7 +538,13 @@ def build(task_id: str, request_stats: Path | None = None) -> dict:
         "env_source": env_source,
         "data_source": data_source,
         "view": view,
-        "view_manifest_sha256": sha256_file(view_dir / "view_manifest.json"),
+        "view_version": vsnap.get("version"),                       # papers.parquet sha 앞 8자 (v1 c7b8d4e7 · v2 591b4325)
+        "view_papers_parquet_sha256": vsnap.get("papers_parquet_sha256"),
+        "view_manifest_sha256": vsnap.get("manifest_sha256"),
+        "view_papers": vsnap.get("view_papers"),
+        "view_manifest_created_at": vsnap.get("manifest_created_at"),
+        "view_diff_created_at": vsnap.get("diff_created_at"),
+        "view_source": view_source,
         "package": package,
         "fulltext_limit": env_sel.get("KISTI_FULLTEXT_LIMIT"),
         "git": {"surveyx": git_state(REPO_ROOT), "kisti_data": git_state(KISTI_ROOT)},
