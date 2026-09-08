@@ -5,6 +5,8 @@ outputs/**
 !outputs/*/
 !outputs/*/survey.pdf
 !outputs/*/survey_wtmk.pdf
+# 편당 실행 매니페스트 (scripts/collect_run.py) — 산출물과 같은 커밋에 넣는다
+!outputs/*/run.json
 
 # tmp directory
 tmp/
