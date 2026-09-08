@@ -55,6 +55,7 @@ SURVEYX_MAX_TRUNCATED_RETRY=10
 | temperature **0.6** 전 호출 | `ChatAgent.remote_chat`이 호출부 값(기본 0.5, outline 1차 0.3)을 덮어쓴다 (`config.CHAT_TEMPERATURE_OVERRIDE`) | 4 agent 공통 조건. AutoSurvey도 원 설정 1.0을 버리고 0.6으로 갔으므로 SurveyX만 원 설정을 두면 원칙이 어긋난다. 0.5→0.6의 recall 효과는 run-to-run 오차(±1.7%p) 아래라 결과는 바뀌지 않고, 각주 하나를 없애는 값이다. 미설정이면 원 설정 유지 |
 | max_tokens **8192** | payload `max_tokens` (`config.CHAT_MAX_TOKENS`) | "원래 없었다"는 정확하지 않다 — 원 SurveyX의 gpt-4o(-mini)는 OpenAI API가 모델 상한 16,384에서 잘랐고, llama@OpenRouter로 오면서 그 암묵 상한이 사라졌다(AutoSurvey에서 128K 토큰 호출 실측). 8192는 그 상한의 복원이며 §2대로 정상 출력에는 영향 0. 없이 가면 HTTP 타임아웃 900초가 대신 가드 노릇을 하는데, 15분 안에 끝나는 1~2만 토큰 루프는 그대로 본문에 들어가고 타임아웃 호출의 비용도 그대로 나간다 |
 | 잘림 재요청 최대 10회 | `finish_reason == "length"`면 버리고 재요청, 소진 시 마지막 응답 채택 (`CHAT_RETRY_TRUNCATED`, `CHAT_MAX_TRUNCATED_RETRY`) | 프로토콜 통일(AutoSurvey `baa46cc`와 같은 규칙). §2대로 SurveyX에서 발동 확률은 낮고 정상 호출엔 영향 0. 폐기한 응답의 토큰도 TokenMonitor에 더한다(과금되므로) |
+| AttributeTree JSON 복구 | `DataCleaner.__process_attri_response`가 `json.loads` 실패 시 `repair_json_text()`(`src/modules/utils.py`)를 거친 뒤에만 재요청 | 파일럿에서 속성 트리 실패의 사실상 전부가 **프롬프트 예시 자체의 형식 오류**였다: `attri_tree_for_*.md`의 출력 예시가 `"other info": [ "info1": "", … ]`(배열 안에 키-값)이고 llama는 이를 그대로 따른다(표본 12건 중 10건, 전부 이 자리에서 `Expecting ',' delimiter`). 복구는 `[ "키":` 로 시작하는 괄호 쌍을 객체로 바꾸고 후행 쉼표를 제거하는 결정적 규칙 두 개뿐이며, 유효한 JSON은 건드리지 않는다. 표본 10/10 복구. 프롬프트 원문은 유지(2026-09-08 결정). `run.json.attri`에 커버리지·복구 수 기록 |
 | `contains_markdown` 루프 | **손대지 않음** (`content_generator.py:192`, `:370`, 상한 없음) | temperature 0.6에서 매 시도가 독립 표본이라 20회 연속 거부 확률 ≈ 0.1% 미만. 상한을 두면 그 극소수 소절에서 markdown이 LaTeX로 흘러가 `#` 때문에 컴파일이 깨질 수 있어 손해. 시도 횟수는 요청 기록으로 사후 집계(§5 `draft_calls_per_subsection`) |
 | top_p 등 | 건드리지 않음 | 손잡이 1개 |
 
@@ -121,7 +122,7 @@ API 호출·파이프라인 실행 없이 mock 으로 위 동작을 고정한다
 
 - 파일럿 실측 편당 **152분 · TM $1.43** → 25편 ≈ **63h · $36**(429 재시도 포함). OpenRouter 키 잔여 $2.57(09-08 08:08) — **키 한도 상향 없이는 배치 불가**.
 - **키 분리**: 실측 비용(`cost_measured_usd`)은 키 단위 차분이라 같은 키로 다른 agent가 동시에 돌면 오염된다(파일럿에서 SurveyForge와 겹쳐 $2.66 vs TM $1.43). agent별 키 또는 순차 실행.
-- **AttributeTree JSON 복구 여부**(파일럿 기록 §6-1)를 결정한 뒤 배치를 시작한다. 넣지 않으면 llama에서 논문 21~37%만 속성 트리를 가진 채 돈다.
+- **AttributeTree JSON 복구는 넣었다**(§3, 2026-09-08). 배치 첫 편에서 `run.json.attri.with_attri`가 파일럿의 41/196보다 확실히 올라가는지 확인한다.
 - 동시성은 `CHAT_AGENT_WORKERS=4` 유지. akashml 429(파일럿 59건)는 tenacity가 흡수한다.
 - 결과표에는 topic ceiling·run-to-run 오차(±1.7%p 잠정)·refs 수를 병기하고, corpus가 다른 과거 실험(bench-2512 edge/instruction tuning)과 같은 표에 놓지 않는다.
 
@@ -139,6 +140,7 @@ API 호출·파이프라인 실행 없이 mock 으로 위 동작을 고정한다
 | 09-08 | mock 단위 테스트 `tests/` 35건 | §5.1 |
 | 09-08 | 파일럿 1편 완료 — plain text 동작 확인, DOI 파일명 외 결함 없음 | `experiments/kisti-2512-pilot-physical-adversarial-attacks.md` |
 | 09-08 | run.json의 refs·recall/precision을 **인용된 항목** 기준으로(bib 전편 아님), 누수는 bib 전편 기준 | §5. 전편 기준은 recall 5배 과대 |
+| 09-08 | AttributeTree JSON 복구(`repair_json_text`) 도입, 프롬프트 원문 유지 | §3. 실패 원인이 프롬프트 예시의 형식 오류로 특정됨 |
 
 ## 8. 관련 문서
 

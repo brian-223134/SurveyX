@@ -180,6 +180,24 @@ def parse_request_stats(path: Path) -> dict:
     }
 
 
+ATTRI_RE = re.compile(
+    r"attribute tree: (\d+)/(\d+) papers have attri \(repaired (\d+), unresolved (\d+) after (\d+) passes\)")
+
+
+def parse_attri_summary(log_path: Path | None) -> dict | None:
+    """DataCleaner.get_attri 가 남기는 요약 한 줄(2026-09-08 이후 코드) → attri 커버리지."""
+    if not log_path or not log_path.exists():
+        return None
+    text = log_path.read_text(encoding="utf-8", errors="replace")
+    m = None
+    for m in ATTRI_RE.finditer(text):
+        pass                                   # 마지막 것 (재실행 로그가 이어 붙은 경우 대비)
+    if not m:
+        return None
+    return {"with_attri": int(m.group(1)), "papers": int(m.group(2)), "repaired": int(m.group(3)),
+            "unresolved": int(m.group(4)), "passes": int(m.group(5))}
+
+
 # --------------------------------------------------------------------------- structure / refs
 CITE_RE = re.compile(r"\\cite[a-zA-Z]*\*?(?:\[[^\]]*\])*\{([^}]*)\}")
 
@@ -385,6 +403,9 @@ def build(task_id: str, request_stats: Path | None = None) -> dict:
     # ---- 요청 기록
     rs_path = request_stats or (metrics / "request_stats.txt")
     req = parse_request_stats(rs_path)
+    log_rel = run_args.get("log_path")
+    log_abs = (REPO_ROOT / log_rel) if log_rel and not Path(log_rel).is_absolute() else (Path(log_rel) if log_rel else None)
+    attri = parse_attri_summary(log_abs)
 
     # ---- 산출물
     tex = task_dir / "latex" / "survey.tex"
@@ -484,6 +505,7 @@ def build(task_id: str, request_stats: Path | None = None) -> dict:
         "truncated_calls": req.get("truncated_accepted"),
         "truncation_retries": req.get("truncated_discarded"),
         "draft_calls_per_subsection": draft_per_sub,
+        "attri": attri,                      # 속성 트리 커버리지 (로그 요약 줄; 2026-09-08 이전 실행은 null)
         "structure": structure,
         "refs": {"basis": "cited entries only (references.bib holds the whole filtered pool)",
                  "arxiv": id_types["arxiv"], "doi": id_types["doi"], "other": id_types["other"],

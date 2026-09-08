@@ -1,6 +1,6 @@
 {
   "schema": "surveyx.run.v1",
-  "generated_at": "2026-09-08 09:24:00",
+  "generated_at": "2026-09-08 09:37:21",
   "task_id": "2026-09-08-0536_Visua",
   "topic": "Visual Adversarial Attacks and Defenses in the Physical World",
   "key_words_expanded": "Visual Adversarial Attacks and Defenses in the Physical World, Adversarial Examples, Physical World Attacks, Computer Vision Security",
@@ -26,12 +26,12 @@
   "fulltext_limit": null,
   "git": {
     "surveyx": {
-      "head": "accc2ac",
+      "head": "6d788e7",
       "dirty": true
     },
     "kisti_data": {
-      "head": "1884fb2",
-      "dirty": true
+      "head": "32c130d",
+      "dirty": false
     }
   },
   "stages": {
@@ -134,6 +134,7 @@
   "truncated_calls": 0,
   "truncation_retries": 0,
   "draft_calls_per_subsection": 5.77,
+  "attri": null,
   "structure": {
     "sections": 6,
     "subsections": 22,
