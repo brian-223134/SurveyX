@@ -161,9 +161,20 @@ def wait_for_crawling(seconds: int):
     print()
 
 
+def safe_filename(name) -> str:
+    """파일명에 쓸 수 없는 문자를 '_'로 바꾼다.
+
+    KISTI view의 DOI id(예: 10.1109/tvcg.2019.2934631)에 든 '/'가 하위 디렉터리를 만들어
+    DataCleaner.load_json_dir(최상위 .json만 읽음)에서 DOI 논문이 통째로 사라졌다
+    (2026-09-08 파일럿: 150편 중 84편 유실). 파일명은 목록으로만 읽히고 id로 재구성되지 않으므로
+    치환해도 무방하다. arXiv id(2211.01671)는 그대로다.
+    """
+    return re.sub(r'[\\/:*?"<>|\s]', "_", str(name))
+
+
 def save_papers(papers: list[dict], dir_path: Path):
     for paper in papers:
-        p = Path(dir_path) / f"{paper.get('_id', paper['title'])}.json"
+        p = Path(dir_path) / f"{safe_filename(paper.get('_id', paper['title']))}.json"
         save_result(json.dumps(paper, indent=4), p)
 
 
