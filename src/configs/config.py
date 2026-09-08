@@ -35,6 +35,31 @@ OPENROUTER_ALLOW_FALLBACKS = (
 # LLM HTTP 타임아웃(초). 미설정 시 무한 대기로 파이프라인이 행에 걸릴 수 있다.
 CHAT_REQUEST_TIMEOUT = int(os.getenv("SURVEYX_HTTP_TIMEOUT", "900"))
 
+
+def _env_float(name: str):
+    v = os.getenv(name, "").strip()
+    return float(v) if v else None
+
+
+def _env_int(name: str):
+    v = os.getenv(name, "").strip()
+    return int(v) if v else None
+
+
+# ===== 디코딩 프로파일 (4 agent 공통 조건 — docs/kisti-run.md §3) =====
+# 모두 비우면 원 SurveyX 동작: 호출부 temperature(0.5, outline 1차 0.3) 그대로,
+# max_tokens 미전송(OpenRouter는 provider 기본 = 컨텍스트 잔여 전부).
+# SURVEYX_TEMPERATURE 는 ChatAgent.remote_chat 에서 호출부 값을 덮어쓰므로 outline 0.3 도 포함된다.
+CHAT_TEMPERATURE_OVERRIDE = _env_float("SURVEYX_TEMPERATURE")
+# 출력 잘림 가드. 정상 호출(최장 섹션 rewrite ≈ 3천 단어)에는 걸리지 않는 값(8192)을 쓴다.
+CHAT_MAX_TOKENS = _env_int("SURVEYX_MAX_TOKENS")
+# finish_reason=length 인 응답은 버리고 재요청 (max_tokens 설정 시 기본 on). 소진하면 마지막 응답 채택.
+CHAT_RETRY_TRUNCATED = (
+    os.getenv("SURVEYX_RETRY_TRUNCATED", "true" if CHAT_MAX_TOKENS else "false").lower()
+    == "true"
+)
+CHAT_MAX_TRUNCATED_RETRY = _env_int("SURVEYX_MAX_TRUNCATED_RETRY") or 10
+
 # LaTeX 컴파일에 사용할 TeX 배포판 bin 디렉터리 (예: /usr/bin).
 # 비우면 PATH 순서를 따른다 — 이 서버는 PATH 앞의 MiKTeX가 패키지 불완전이라 지정 필요.
 TEX_BIN_DIR = os.getenv("SURVEYX_TEX_BIN", "")

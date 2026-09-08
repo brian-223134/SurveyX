@@ -29,6 +29,10 @@ from src.configs.config import (
     CHAT_REQUEST_TIMEOUT,
     OPENROUTER_PROVIDER_ONLY,
     OPENROUTER_ALLOW_FALLBACKS,
+    CHAT_TEMPERATURE_OVERRIDE,
+    CHAT_MAX_TOKENS,
+    CHAT_RETRY_TRUNCATED,
+    CHAT_MAX_TRUNCATED_RETRY,
 )
 from src.configs.constants import OUTPUT_DIR
 
@@ -42,9 +46,18 @@ logger.debug(f"ChatAgent pid={os.getpid()}")
 
 class ChatAgent:
     Cost_file = Path(f"{OUTPUT_DIR}/tmp/cost.txt")
+    # 요청 기록. 한 줄 = status||http_code||request[:200]||response[:200]
+    #   status 1 = 정상 채택, 0 = HTTP 오류(재시도됨),
+    #          2 = finish_reason=length 로 잘려 폐기·재요청, 3 = 잘렸으나 재요청 소진으로 채택
+    # 전역 누적 파일이므로 편 단위 집계는 실행 후 outputs/<task_id>/metrics/ 로 옮겨서 한다
+    # (scripts/run_kisti.py 가 수행, scripts/collect_run.py 가 읽는다).
     Request_stats_file = Path(f"{OUTPUT_DIR}/tmp/request_stats.txt")
     Record_splitter = "||"
     Record_show_length = 200
+    STATUS_OK = 1
+    STATUS_HTTP_ERROR = 0
+    STATUS_TRUNCATED_DISCARDED = 2
+    STATUS_TRUNCATED_ACCEPTED = 3
 
     def __init__(
         self,
@@ -116,7 +129,13 @@ class ChatAgent:
             image_message_frame = {"role": "user", "content": local_image_frame}
             messages.append(image_message_frame)
 
+        # 디코딩 프로파일 오버라이드 (config.py). 호출부가 넘긴 temperature(0.5 / outline 0.3)는
+        # SURVEYX_TEMPERATURE 가 설정돼 있으면 그 값으로 통일된다.
+        if CHAT_TEMPERATURE_OVERRIDE is not None:
+            temperature = CHAT_TEMPERATURE_OVERRIDE
         payload = {"model": model, "messages": messages, "temperature": temperature}
+        if CHAT_MAX_TOKENS:
+            payload["max_tokens"] = CHAT_MAX_TOKENS
         # OpenRouter provider 고정 (quantization 일관성). 비어 있으면 미전송.
         if OPENROUTER_PROVIDER_ONLY:
             payload["provider"] = {
@@ -124,46 +143,77 @@ class ChatAgent:
                 "allow_fallbacks": OPENROUTER_ALLOW_FALLBACKS,
             }
 
-        response = requests.post(
-            url, headers=header, json=payload, timeout=CHAT_REQUEST_TIMEOUT
-        )
-
-        if response.status_code != 200:
-            logger.error(
-                f"chat response code: {response.status_code}\n{response.text[:500]}, retrying..."
+        # 잘림 재요청 루프. finish_reason=length 는 max_tokens 가드에 걸린 것이고 정상 출력은
+        # 가드 아래이므로(최장 호출 ≈ 4~5K 토큰) 그 응답은 반복 루프로 본다 — 버리고 새 표본을 받는다.
+        # HTTP 오류는 바깥의 tenacity 가 재시도한다(그 경우 이 루프의 카운터는 초기화된다).
+        truncated_retries = 0
+        while True:
+            response = requests.post(
+                url, headers=header, json=payload, timeout=CHAT_REQUEST_TIMEOUT
             )
-            status_code = 0 if response.status_code != 200 else 1
 
-            # 스레드 락 적용됨
+            if response.status_code != 200:
+                logger.error(
+                    f"chat response code: {response.status_code}\n{response.text[:500]}, retrying..."
+                )
+                # 스레드 락 적용됨
+                self.update_record(
+                    status_code=self.STATUS_HTTP_ERROR,
+                    response_code=response.status_code,
+                    request=text_content,
+                    response=response.text,
+                )
+                response.raise_for_status()
+
+            finish_reason = None
+            try:
+                res = json.loads(response.text)
+                res_text = res["choices"][0]["message"]["content"]
+                finish_reason = res["choices"][0].get("finish_reason")
+                # 토큰 모니터 — 폐기하는 잘림 응답도 과금되므로 함께 더한다
+                if self.token_monitor:
+                    self.token_monitor.add_token(
+                        model=model,
+                        input_tokens=res["usage"]["prompt_tokens"],
+                        output_tokens=res["usage"]["completion_tokens"],
+                    )
+            except Exception as e:
+                res_text = f"Error: {e}"
+                logger.error(f"There is an error: {e}")
+
+            truncated = finish_reason == "length"
+            if (
+                truncated
+                and CHAT_RETRY_TRUNCATED
+                and truncated_retries < CHAT_MAX_TRUNCATED_RETRY
+            ):
+                truncated_retries += 1
+                logger.warning(
+                    f"output truncated (finish_reason=length, max_tokens={CHAT_MAX_TOKENS}); "
+                    f"discarding and re-requesting {truncated_retries}/{CHAT_MAX_TRUNCATED_RETRY}"
+                )
+                self.update_record(
+                    status_code=self.STATUS_TRUNCATED_DISCARDED,
+                    response_code=response.status_code,
+                    request=text_content,
+                    response=res_text,
+                )
+                continue
+
+            if truncated:
+                logger.warning(
+                    f"output truncated (finish_reason=length) and accepted "
+                    f"after {truncated_retries} re-requests"
+                )
             self.update_record(
-                status_code=status_code,
+                status_code=(
+                    self.STATUS_TRUNCATED_ACCEPTED if truncated else self.STATUS_OK
+                ),
                 response_code=response.status_code,
                 request=text_content,
-                response=response.text,
+                response=res_text,
             )
-            response.raise_for_status()
-        try:
-            res = json.loads(response.text)
-            res_text = res["choices"][0]["message"]["content"]
-            # 총 비용 갱신
-            # 토큰 모니터
-            if self.token_monitor:
-                self.token_monitor.add_token(
-                    model=model,
-                    input_tokens=res["usage"]["prompt_tokens"],
-                    output_tokens=res["usage"]["completion_tokens"],
-                )
-        except Exception as e:
-            res_text = f"Error: {e}"
-            logger.error(f"There is an error: {e}")
-
-        status_code = 0 if response.status_code != 200 else 1
-        self.update_record(
-            status_code=status_code,
-            response_code=response.status_code,
-            request=text_content,
-            response=res_text,
-        )
+            break
 
         if debug:
             return res_text, response
@@ -229,17 +279,15 @@ class ChatAgent:
             )
             + "\n"
         )
-        # 파일 존재 여부 확인
+        # 파일 존재 여부 확인 — 없으면 빈 파일만 만든다. (원 코드는 여기서 content 를 한 번 쓰고
+        # 아래 append 에서 또 써서 첫 기록이 두 번 남았다. run_kisti.py 가 편마다 파일을 회전시키므로
+        # 편당 집계에서 첫 요청이 항상 2회로 세어지는 문제가 됐다.)
         if not os.path.exists(cls.Request_stats_file):
             parent_dir = Path(cls.Request_stats_file).parent
             parent_dir.mkdir(parents=True, exist_ok=True)
-            with open(cls.Request_stats_file, "w", encoding="utf-8") as fw:
-                fcntl.flock(fw, fcntl.LOCK_EX)  # 락 획득
-                fw.write(content)
-                logger.info(
-                    f"record file {cls.Request_stats_file} did not exist, created and initialized with 0.0"
-                )
-                fcntl.flock(fw, fcntl.LOCK_UN)
+            with open(cls.Request_stats_file, "w", encoding="utf-8"):
+                pass
+            logger.info(f"record file {cls.Request_stats_file} did not exist, created")
         # 누적 비용 갱신
         try:
             with open(cls.Request_stats_file, "a", encoding="utf-8") as fw:
@@ -306,7 +354,11 @@ class ChatAgent:
             total_count = 0
             for line in fr:
                 elements = line.strip().split(ChatAgent.Record_splitter)
-                succ_count += int(elements[0])
+                # status 1(정상)·3(잘림 채택)은 응답이 돌아온 것, 0(HTTP 오류)·2(잘림 폐기)는 아님
+                succ_count += int(elements[0]) in (
+                    ChatAgent.STATUS_OK,
+                    ChatAgent.STATUS_TRUNCATED_ACCEPTED,
+                )
                 total_count += 1
             logger.info(f"요청 성공률: {round(succ_count / total_count * 100, 2)}%")
 
