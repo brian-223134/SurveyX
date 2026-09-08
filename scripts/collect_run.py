@@ -181,8 +181,14 @@ def parse_request_stats(path: Path) -> dict:
 
 
 # --------------------------------------------------------------------------- structure / refs
+CITE_RE = re.compile(r"\\cite[a-zA-Z]*\*?(?:\[[^\]]*\])*\{([^}]*)\}")
+
+
 def measure_tex(tex_path: Path) -> dict:
-    """AutoSurvey scripts/check_survey.measure 와 같은 계산 (섹션·서브섹션·단어)."""
+    """AutoSurvey scripts/check_survey.measure 와 같은 계산 (섹션·서브섹션·단어).
+
+    인용 키는 본문과 `\\input{...}` 으로 끌어들인 tex(figs/ 의 표·그림)에서 모두 모은다 —
+    unsrt 스타일은 인용된 항목만 참고문헌에 찍으므로 이 집합이 PDF 의 참고문헌 목록이다."""
     if not tex_path.exists():
         return {"sections": None, "subsections": None, "words": None, "from_tex": False, "citation_runs": None,
                 "cited_keys": []}
@@ -190,7 +196,11 @@ def measure_tex(tex_path: Path) -> dict:
     body = re.split(r"\\begin\{thebibliography\}|\\bibliography\{|\\section\*?\{References\}", body)[0]
     secs = len(re.findall(r"^\\section\{", body, re.M))
     subs = len(re.findall(r"^\\subsection\{", body, re.M))
-    cite_runs = re.findall(r"\\cite[tp]?\{([^}]*)\}", body)
+    cite_runs = CITE_RE.findall(body)
+    for inc in re.findall(r"\\input\{([^}]*)\}", body):
+        p = tex_path.parent / (inc.strip() + ("" if inc.strip().endswith(".tex") else ".tex"))
+        if p.exists():
+            cite_runs += CITE_RE.findall(p.read_text(encoding="utf-8", errors="replace"))
     cited = []
     for run in cite_runs:
         cited += [k.strip() for k in run.split(",") if k.strip()]
@@ -381,14 +391,18 @@ def build(task_id: str, request_stats: Path | None = None) -> dict:
     bib = task_dir / "latex" / "references.bib"
     st = measure_tex(tex)
     cited_keys = st.pop("cited_keys")
-    refs = parse_bib(bib)
-    bib_keys = {e["key"] for e in refs}
+    bib_all = parse_bib(bib)
+    # SurveyX 의 references.bib 에는 필터 통과 전편(예: 196편)이 들어가고, 실제 참고문헌 목록(unsrt)은
+    # 본문에서 인용된 항목만이다. refs·recall/precision 은 인용된 항목으로 계산한다(AutoSurvey 의
+    # references 도 인용 목록이다). 누수 검사만 bib 전편에 대해 한다(풀에 들어온 것 자체가 누수).
+    cited_set = set(cited_keys)
+    refs = [e for e in bib_all if e["key"] in cited_set]
     id_types = Counter(e["id_type"] for e in refs)
     structure = {
         "sections": st["sections"], "subsections": st["subsections"], "words": st["words"],
         "from_tex": st["from_tex"],
-        "references": len(refs),
-        "references_cited": len(set(cited_keys) & bib_keys),
+        "references": len(refs),                 # 인용된(=PDF 참고문헌 목록) 항목 수
+        "references_bib_total": len(bib_all),    # references.bib 전체(필터 통과 풀)
         "citation_runs": st["citation_runs"],
         "pdf_pages": pdf_pages(task_dir / "survey.pdf"),
     }
@@ -420,7 +434,7 @@ def build(task_id: str, request_stats: Path | None = None) -> dict:
     for p in (tex, bib):
         if p.exists():
             texts += p.read_text(encoding="utf-8", errors="replace") + "\n"
-    leak = leak_check(view, refs, texts, gt_title_str)
+    leak = leak_check(view, bib_all, texts, gt_title_str)
 
     # ---- provenance
     view_dir = KISTI_ROOT / "data" / "views" / view
@@ -471,7 +485,8 @@ def build(task_id: str, request_stats: Path | None = None) -> dict:
         "truncation_retries": req.get("truncated_discarded"),
         "draft_calls_per_subsection": draft_per_sub,
         "structure": structure,
-        "refs": {"arxiv": id_types["arxiv"], "doi": id_types["doi"], "other": id_types["other"],
+        "refs": {"basis": "cited entries only (references.bib holds the whole filtered pool)",
+                 "arxiv": id_types["arxiv"], "doi": id_types["doi"], "other": id_types["other"],
                  "match_keys": sorted({e["match_key"] for e in refs if e["match_key"]})},
         "gt": gt,
         "score": score,

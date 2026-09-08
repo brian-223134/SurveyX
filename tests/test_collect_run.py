@@ -171,12 +171,12 @@ class CollectRunTest(unittest.TestCase):
         self.assertTrue(s["from_tex"])
         self.assertGreater(s["words"], 10)
         self.assertEqual(s["citation_runs"], 4)
-        self.assertEqual(s["references"], 4)
-        self.assertEqual(s["references_cited"], 3)          # k1 k2 k3 (k9 는 bib 에 없음)
+        self.assertEqual(s["references"], 3)                 # 인용된 k1 k2 k3 (k9 는 bib 에 없음)
+        self.assertEqual(s["references_bib_total"], 4)      # bib 전편 (k4 는 미인용)
         self.assertIsNone(s["pdf_pages"])                    # survey.pdf 없음
         self.assertEqual(r["refs"]["arxiv"], 2)
         self.assertEqual(r["refs"]["doi"], 1)
-        self.assertEqual(r["refs"]["other"], 1)
+        self.assertEqual(r["refs"]["other"], 0)              # 미인용 k4 는 세지 않는다
         self.assertEqual(r["refs"]["match_keys"], sorted([
             "10.48550/arxiv.1712.09665", "10.1145/3589334.3645719", "10.48550/arxiv.1707.08945"]))
 
@@ -232,7 +232,21 @@ class CollectRunTest(unittest.TestCase):
         self.assertTrue(r["leak"]["clean"])
         self.assertEqual(r["leak"]["exclude_keys"], 2)
 
+    def test_cites_inside_input_files_count(self):
+        d = self.outputs / self.task_id / "latex"
+        (d / "figs").mkdir()
+        (d / "figs" / "table_1.tex").write_text("\\begin{table}Row \\cite{k4}\\end{table}\n", encoding="utf-8")
+        tex = d / "survey.tex"
+        tex.write_text(tex.read_text(encoding="utf-8").replace("\\bibliography{references}",
+                                                                "\\input{figs/table_1}\n\\bibliography{references}"),
+                       encoding="utf-8")
+        r = collect_run.build(self.task_id)
+        self.assertEqual(r["structure"]["references"], 4)   # k4 가 표 안에서 인용됨
+        self.assertEqual(r["structure"]["citation_runs"], 5)
+        self.assertEqual(r["refs"]["other"], 1)
+
     def test_leak_detects_twin_and_gt_title(self):
+        # 미인용이라도 bib(=검색 풀)에 들어오면 누수다
         bib = self.outputs / self.task_id / "latex" / "references.bib"
         bib.write_text(REFERENCES_BIB + f"""@article{{k5,
   title={{{GT_TITLE}}},
