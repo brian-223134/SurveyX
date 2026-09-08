@@ -15,6 +15,7 @@ from src.models.monitor.time_monitor import TimeMonitor
 from src.modules.utils import (
     clean_chat_agent_format,
     load_file_as_string,
+    repair_json_text,
     sanitize_filename,
     save_result,
 )
@@ -26,6 +27,7 @@ class DataCleaner:
     def __init__(self, papers: list[dict] = []):
         self.papers: list[dict] = papers
         self.chat_agent_workers = CHAT_AGENT_WORKERS
+        self.attri_repaired = 0  # repair_json_text 로 살린 attribute tree 수 (run 기록용)
 
     def load_json_dir(self, json_path_dir: Path):
         """JSON 디렉터리에서 논문들을 불러온다."""
@@ -145,8 +147,20 @@ class DataCleaner:
             self.papers[paper_index]["attri"] = {**res_dic}
             return True
         except Exception as e:
+            first_error = e
+        # JSON 복구 (docs/kisti-run.md §3): 프롬프트 예시의 형식 오류를 llama 가 그대로 따라
+        # "other info" 가 배열로 나오는 것이 실패의 사실상 전부다. 재요청 전에 결정적으로 고친다.
+        try:
+            res_dic = json.loads(repair_json_text(res))
+            self.papers[paper_index]["attri"] = {**res_dic}
+            self.attri_repaired += 1
             logger.debug(
-                f"Failed to process {self.papers[paper_index]['title']}; The res: {res[:100]}; {e}"
+                f"Repaired attri JSON for {self.papers[paper_index]['title']}: {first_error}"
+            )
+            return True
+        except Exception as e:
+            logger.debug(
+                f"Failed to process {self.papers[paper_index]['title']}; The res: {res[:100]}; {first_error}; after repair: {e}"
             )
             return False
 
@@ -177,6 +191,11 @@ class DataCleaner:
                 if not self.__process_attri_response(res, paper_index)
             ]
             cnt += 1
+        n_attri = sum(1 for p in self.papers if p.get("attri"))
+        logger.info(
+            f"attribute tree: {n_attri}/{len(self.papers)} papers have attri "
+            f"(repaired {self.attri_repaired}, unresolved {len(prompts_and_index)} after {cnt} passes)"
+        )
 
     def save_papers(
         self, save_dir: Union[str, Path], file_name_attr: str = "title"

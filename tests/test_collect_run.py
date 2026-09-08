@@ -281,6 +281,16 @@ class CollectRunTest(unittest.TestCase):
         self.assertIn("66.7%/66.7% (n=3)", table)
         self.assertIn("| clean |", table)
 
+    def test_attri_summary_from_log(self):
+        log = self.tmp / "run.log"
+        log.write_text("x\n... - attribute tree: 150/196 papers have attri (repaired 118, unresolved 46 after 3 passes)\n",
+                       encoding="utf-8")
+        (self.outputs / self.task_id / "metrics" / "run_args.json").write_text(
+            json.dumps({"args": "a", "status": "ok", "log_path": str(log)}), encoding="utf-8")
+        r = collect_run.build(self.task_id)
+        self.assertEqual(r["attri"], {"with_attri": 150, "papers": 196, "repaired": 118, "unresolved": 46, "passes": 3})
+        self.assertIsNone(collect_run.parse_attri_summary(self.tmp / "missing.log"))
+
     def test_parse_dotenv_masks_secrets(self):
         env_file = self.tmp / ".env"
         env_file.write_text("OPENROUTER_API_KEY=sk-or-v1-abcdef123456\nSURVEYX_TEMPERATURE=0.6\n# c\nexport X='y'\n",

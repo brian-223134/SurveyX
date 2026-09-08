@@ -125,6 +125,60 @@ def clean_chat_agent_format(content: str):
     return content
 
 
+_KV_ARRAY_OPEN = re.compile(r'\[\s*"(?:[^"\\]|\\.)*"\s*:')
+_TRAILING_COMMA = re.compile(r",(\s*[}\]])")
+
+
+def _match_bracket(text: str, open_pos: int) -> int:
+    """text[open_pos] 가 '[' 또는 '{' 일 때 짝이 되는 닫는 괄호 위치. 문자열 리터럴 안은 건너뛴다. 없으면 -1."""
+    depth = 0
+    in_str = False
+    i = open_pos
+    while i < len(text):
+        ch = text[i]
+        if in_str:
+            if ch == "\\":
+                i += 1
+            elif ch == '"':
+                in_str = False
+        elif ch == '"':
+            in_str = True
+        elif ch in "[{":
+            depth += 1
+        elif ch in "]}":
+            depth -= 1
+            if depth == 0:
+                return i
+        i += 1
+    return -1
+
+
+def repair_json_text(text: str) -> str:
+    """LLM 이 낸 JSON 의 결정적 형식 오류 두 가지를 바로잡는다.
+
+    1. 키-값을 담은 배열 `[ "k": v, ... ]` → 객체 `{ "k": v, ... }`.
+       attri_tree_for_*.md 의 출력 예시가 `"other info": [ "info1": "", "info2": {...} ]` 로 잘못돼 있고
+       llama-3.3-70b 는 이를 그대로 따른다(2026-09-08 표본 12건 중 10건이 이 한 곳에서 실패:
+       "Expecting ',' delimiter"). 배열은 `"문자열":` 로 시작할 수 없으므로 이 패턴은 항상 오류다.
+    2. 후행 쉼표 `,}` `,]` 제거 (같은 예시에 들어 있다).
+
+    json.loads 가 실패한 뒤에만 부른다. 그래도 실패하면 호출자가 원래대로 재요청한다.
+    """
+    guard = 0
+    while guard < 50:
+        guard += 1
+        m = _KV_ARRAY_OPEN.search(text)
+        if not m:
+            break
+        open_pos = m.start()
+        close_pos = _match_bracket(text, open_pos)
+        if close_pos < 0:
+            break
+        text = text[:open_pos] + "{" + text[open_pos + 1:close_pos] + "}" + text[close_pos + 1:]
+    text = _TRAILING_COMMA.sub(r"\1", text)
+    return text
+
+
 def load_papers(paper_dir_path_or_papers: Union[Path, List[Dict]]) -> list[dict]:
     if isinstance(paper_dir_path_or_papers, Path):
         papers = []

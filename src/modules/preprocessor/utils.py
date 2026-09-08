@@ -10,7 +10,7 @@ from src.configs.logger import get_logger
 from src.models.LLM import ChatAgent
 from src.configs.config import ADVANCED_CHATAGENT_MODEL
 from src.models.LLM.utils import load_prompt
-from src.modules.utils import save_result, update_config
+from src.modules.utils import sanitize_filename, save_result, update_config
 from src.configs.config import DEFAULT_DATA_FETCHER_ENABLE_CACHE
 
 logger = get_logger("src.modules.preprocessor.utils")
@@ -169,7 +169,7 @@ def safe_filename(name) -> str:
     (2026-09-08 파일럿: 150편 중 84편 유실). 파일명은 목록으로만 읽히고 id로 재구성되지 않으므로
     치환해도 무방하다. arXiv id(2211.01671)는 그대로다.
     """
-    return re.sub(r'[\\/:*?"<>|\s]', "_", str(name))
+    return re.sub(r"\s", "_", sanitize_filename(str(name)))
 
 
 def save_papers(papers: list[dict], dir_path: Path):
