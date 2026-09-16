@@ -141,6 +141,7 @@ API 호출·파이프라인 실행 없이 mock 으로 위 동작을 고정한다
 | `tests/test_chat_agent.py` | temperature 오버라이드(호출부 0.3 → 0.6, batch 포함), max_tokens 전송/미전송, 잘림 폐기→재요청→정상(status 2·2·1), 소진 시 채택(status 3), 재요청 off, 폐기 응답 토큰 가산, HTTP 오류 status 0, 기록 파일 첫 줄 중복 없음 |
 | `tests/test_collect_run.py` | 구조·refs id 유형·매칭 키(버전 제거·소문자), in_view 분모의 recall/precision, 누수(twin id·GT 제목) 검출과 clean, 요청 기록(status·429·템플릿 매칭·draft/소절), env 스냅샷 부재 시 null, `--table`, **정책**: provenance 없음 → null/비교 불가, provenance 그대로 싣기·comparable, cutoff 불일치 표시, bib 풀 사후 재판정(위반 검출) |
 | `tests/test_run_kisti.py` | 요청 기록 회전, task 디렉터리 탐색, `--skip-done` 판정, 크레딧 파싱, run_topic 이 metrics 4종과 run.json 을 남김(성공·실패·task 디렉터리 없음), **topic 정책**: slug 해석·환경변수 우선·`check_policy`(행 없음/needs_review/sidecar 없음/파일 없음 거부)·자식 env 에 `KISTI_TOPIC_ID`/`KISTI_VIEW` 주입·미등록 title 거부·`--no-policy` |
+| `tests/test_pseudo_pipeline.py` | **pseudo survey pipeline**: `tasks/full_run.py` 를 가짜(`PseudoSurveyPipeline` + `PseudoKistiFetcher`)로 바꿔 `run_kisti.run_topic` → 산출물 → `collect_run` 을 끝까지 돌리고 run.json 이 코드에 임베드한 기대 JSON(`EXPECTED_RUN_WITH_POLICY` / `_NO_POLICY`)과 일치하는지. 예시 입력(topics 행·정책 행·sidecar·gap_to_80_refs·corpus 5편)도 임베드. 정책 on(게이트 1편 차단·재판정 위반 0·recall 2/3) · off(비교 대상 아님) · 게이트 우회 시 재판정이 위반 1 검출 · dry-run · needs_review 거부 |
 | `tests/test_preprocessor_policy.py` | `preprocessor.py` 훅: provenance 파일 기록, 허용 집합 밖 id 제거와 `policy_gate` 기록, is_allowed 없는 fetcher 무변경 (임포트가 무거워 수십 초) |
 
 ## 6. 예산·주의
