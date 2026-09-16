@@ -168,6 +168,7 @@ python tasks/workflow/06_gen_latex.py    --task_id $task_id
 ```bash
 # KISTI corpus 벤치마크 실행 (실행 전후 기록까지) — docs/kisti-run.md
 PY=/data2/chanjoong/miniforge3/envs/surveyx/bin/python
+export KISTI_VIEW=kisti-2608                                  # 2026-09-14 규약 view; runner 가 topic 별 KISTI_TOPIC_ID 를 넣는다
 $PY scripts/run_kisti.py --slug instruction-tuning-llms      # 1편
 $PY scripts/run_kisti.py --all --skip-done                    # topic 25편
 $PY scripts/collect_run.py --table                            # 편당 run.json 집계 표
@@ -206,9 +207,11 @@ $PY scripts/collect_run.py --table                            # 편당 run.json 
 
 ## 9. 실험 결과
 
-> 2026-09-07부로 corpus를 KISTI DB(view `kisti-2512`)로 바꿨습니다. 실행 조건(백본·temperature 0.6·max_tokens 8192·잘림 재요청)과 편당 기록 절차는 [docs/kisti-run.md](docs/kisti-run.md)가 현행 정본입니다. 아래 9.1·9.2는 asg-common-corpus 시절의 기록이며 KISTI 결과와 같은 표에 놓지 않습니다.
+> 2026-09-07부로 corpus를 KISTI DB로 바꿨습니다. 실행 조건(백본·temperature 0.6·max_tokens 8192·잘림 재요청)과 편당 기록 절차는 [docs/kisti-run.md](docs/kisti-run.md)가 현행 정본입니다. 아래 9.1·9.2는 asg-common-corpus 시절의 기록이며 KISTI 결과와 같은 표에 놓지 않습니다.
 >
-> **9.3 KISTI 파일럿 1편 (2026-09-08, view v1)** — physical-adversarial-attacks: 152분 · TM $1.43 · 6섹션/22소절/16쪽 · 인용 69편 · recall 3.4% / precision 7.2%(GT in-view 149편) · 누수 0 · 잘림 0. plain text 원문으로 파이프라인 전 단계 동작 확인, DOI id 파일명 버그 발견·수정. 상세: [docs/experiments/kisti-2512-pilot-physical-adversarial-attacks.md](docs/experiments/kisti-2512-pilot-physical-adversarial-attacks.md), 매니페스트 `outputs/2026-09-08-0536_Visua/run.json`.
+> **2026-09-14 규약(2026-09-16 적용)**: reference cutoff 를 2025-12-31 로 고정하지 않고 **topic 별 GT survey 최초 공개일** 이전 문헌만 검색합니다(view `kisti-2608`, `KISTI_TOPIC_ID=<slug>`, 채점 분모 `n_gt_refs_cutoff`). 상세 [docs/kisti-run.md §1.1](docs/kisti-run.md). 정책 적용 실행은 아직 없습니다.
+>
+> **9.3 KISTI 파일럿 1편 (2026-09-08, view kisti-2512 v1, topic 정책 없음 — 새 규약 비교 대상 아님)** — physical-adversarial-attacks: 152분 · TM $1.43 · 6섹션/22소절/16쪽 · 인용 69편 · recall 3.4% / precision 7.2%(구 분모 GT in-view 149편; 새 분모 128) · 누수 0 · 잘림 0. plain text 원문으로 파이프라인 전 단계 동작 확인, DOI id 파일명 버그 발견·수정. 상세: [docs/experiments/kisti-2512-pilot-physical-adversarial-attacks.md](docs/experiments/kisti-2512-pilot-physical-adversarial-attacks.md), 매니페스트 `outputs/2026-09-08-0536_Visua/run.json`.
 
 ### 9.1 Edge Computing 서베이 1편 생성 (2026-08-31)
 

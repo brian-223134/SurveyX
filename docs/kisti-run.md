@@ -1,4 +1,4 @@
-# KISTI corpus 실행 — 디코딩 프로파일·편당 기록 (2026-09-08 기준)
+# KISTI corpus 실행 — 디코딩 프로파일·topic 정책·편당 기록 (2026-09-16 기준)
 
 SurveyX 쪽 **현행 정본**이다. corpus·adapter·topic·평가 규약의 정본은 `kisti_data/docs/asg/AGENT-HANDOFF.md`(4 agent 공통)와 `kisti_data/docs/asg/surveyx.md`(SurveyX 설계)이고, 이 문서는 그 조건을 SurveyX 코드에 어떻게 맞췄는지와 실행·기록 절차를 적는다. 결정이 바뀌면 §7 결정 로그부터 고친다.
 
@@ -7,14 +7,15 @@ SurveyX 쪽 **현행 정본**이다. corpus·adapter·topic·평가 규약의 �
 | 항목 | 값 |
 |---|---|
 | 목표 | 4 agent(AutoSurvey · SurveyForge · SurveyX · LLM×MapReduce-V2)를 같은 corpus·백본·topic 25편으로 돌려 GT 참고문헌 대비 recall·precision 비교 |
-| corpus | KISTI Science Data Lake 파생 스토어 → view `kisti-2512` 1,651,701편. asg-common-corpus(bench-2512)는 2026-09-07부로 미사용 |
-| 데이터 소스 | `.env` `SURVEYX_DATA_SOURCE=kisti` → `KistiFetcher`(view parquet ILIKE + body_store 원문 + authors/venue BibTeX). 스모크 통과(2026-09-08: 검색 1,912편, 원문 2편, provenance 출력) |
+| corpus | KISTI Science Data Lake 파생 스토어 → **view `kisti-2608` 1,663,704편(시간 컷 없음, `c1a0c6b3 / 2026-09-14T13:18:56Z`)**. 이전 `kisti-2512`(v1 1,651,701 · v2 1,651,487)는 정책 없는 파일럿에만. asg-common-corpus(bench-2512)는 2026-09-07부로 미사용 |
+| **reference cutoff** | **topic 별 GT survey 최초 공개일**(`retrieval_cutoff_at`, 2026-09-14 규약 — §1.1). 2025-12-31 고정 아님. `KISTI_TOPIC_ID=<slug>` 로 `KistiFetcher` 가 허용 집합 **안에서** 검색·원문 조회. 채점 분모 `n_gt_refs_cutoff`(physical-adversarial 150 → **128**) |
+| 데이터 소스 | `.env` `SURVEYX_DATA_SOURCE=kisti` → `KistiFetcher`(view parquet ILIKE + body_store 원문 + authors/venue BibTeX). 정책 스모크 통과(2026-09-16: physical-adversarial "adversarial patch, physical attack" 323편, cutoff 위반·제외 id 0건, 기동 17초) |
 | 백본 | `meta-llama/llama-3.3-70b-instruct` @ OpenRouter, provider 핀 `akashml/fp8`, fallback 없음 |
 | 디코딩 프로파일 | **temperature 0.6(전 호출) · max_tokens 8192 · 잘림 재요청 최대 10회** — `.env` 4줄, §3 |
 | 출력 분량 | 통제하지 않는다. SurveyX 기본값(섹션·소절 수, 단어 수, refs 수는 agent 속성으로 기록) |
-| 실행 | `scripts/run_kisti.py --slug <slug>` 또는 `--all` (§4). 파이프라인 코드는 `tasks/full_run.py` 그대로 |
-| 기록 | 편당 `outputs/<task_id>/run.json` (`scripts/collect_run.py`, §5). `.gitignore` 예외로 커밋에 들어간다 |
-| 진행 | **1편 파일럿 완료**(2026-09-08, sec #3 physical-adversarial-attacks: 152분 · TM $1.43 · 인용 69 · recall 3.4% / precision 7.2% · 누수 0 · 잘림 0) — [experiments/kisti-2512-pilot-physical-adversarial-attacks.md](experiments/kisti-2512-pilot-physical-adversarial-attacks.md). 25편 본배치 **미착수**(§6) |
+| 실행 | `KISTI_VIEW=kisti-2608 scripts/run_kisti.py --slug <slug>` 또는 `--all` (§4). runner 가 topic → slug 를 `KISTI_TOPIC_ID` 로 넣고 정책 파일·sidecar 를 실행 전에 확인한다. 파이프라인은 `tasks/full_run.py` 그대로(provenance 기록·허용 집합 게이트 2곳만 추가, §1.1) |
+| 기록 | 편당 `outputs/<task_id>/run.json` (`scripts/collect_run.py`, §5) — `retrieval_policy`(cutoff·허용 편수·허용 집합 sha256)·`policy_check`(bib 풀 위반 0건)·`policy_comparable`. `.gitignore` 예외로 커밋에 들어간다 |
+| 진행 | **정책 없는 1편 파일럿 완료**(2026-09-08, physical-adversarial-attacks, view kisti-2512 v1 · **KISTI_TOPIC_ID 미설정 → 새 규약 비교 대상 아님**) — [experiments/kisti-2512-pilot-physical-adversarial-attacks.md](experiments/kisti-2512-pilot-physical-adversarial-attacks.md). 정책 적용 실행 **미착수**(§6) |
 
 ## 1. 데이터 소스 — KISTI adapter
 
@@ -24,6 +25,23 @@ SurveyX 쪽 **현행 정본**이다. corpus·adapter·topic·평가 규약의 �
 - **DOI id 함정(수정됨, 2026-09-08)**: `save_papers`가 `_id`를 파일명으로 그대로 써서 DOI의 `/`가 하위 디렉터리를 만들었고, `DataCleaner.load_json_dir`은 최상위 `.json`만 읽어 첫 파일럿에서 필터 통과 150편 중 **DOI 논문 84편이 통째로 사라졌다**(arXiv 66편만 AttributeTree 진입). `safe_filename()`으로 파일명만 치환한다(`_id` 값은 그대로, 파일명은 목록으로만 읽힘). 중단 실행은 `outputs/aborted-doi-path-bug-2026-09-08-0528_Visua/`에 보관. 회귀 테스트 `tests/test_preprocessor_utils.py`.
 - 원문은 s2orc/pmc 추출 plain text다. **파일럿으로 확인(2026-09-08)**: DataCleaner·AttributeTree·outline 매핑 모두 동작. AttributeTree JSON 파싱 실패(3패스 후 attri 보유 21%)는 8/31 markdown 원문에서도 37%였던 llama 고유 현상이라 원문 형식 탓이 아니다(파일럿 기록 §4.2).
 - 스모크: `SURVEYX_DATA_SOURCE=kisti PYTHONPATH=/data2/chanjoong/kisti_data/adapter $PY -m surveyx.kisti_fetcher`
+
+## 1.1 topic 정책 — GT 최초 공개일 cutoff (2026-09-14 규약, 2026-09-16 적용)
+
+교수님 지시(AGENT-HANDOFF §0): reference cutoff 를 2025-12-31 로 고정하지 않는다. corpus 는 시간 컷 없는 view `kisti-2608` 을 두고, **retrieval 이 topic 별 GT survey 최초 공개일(`retrieval_cutoff_at`) 이전 문헌만** 뽑는다. 판정은 `upper_bound(레코드 공개일) < cutoff`(당일·날짜 불명 제외, 정밀도 = 문자열 길이), 제외 id(GT 본체·선행판·사본)는 날짜와 무관하게 차단, 검색·원문 조회 모두 **허용 집합 안에서**(전체 Top-K 뒤 사후 필터 금지). 4 agent 가 같은 sidecar `data/views/kisti-2608/paper_dates.json` 과 `adapter/common/retrieval_policy.py` 규칙을 쓴다.
+
+| 어디서 | 무엇 | 비고 |
+|---|---|---|
+| corpus 쪽 `KistiFetcher`(kisti_data, 2026-09-16) | `KISTI_TOPIC_ID=<slug>` 이면 정책 파일 `AutoSurvey/data/topic_policy.kisti-2608.jsonl` 의 `retrieval_cutoff_at`·`exclude_ids` + sidecar 로 허용 집합을 만들어 DuckDB 임시 테이블로 올리고 ILIKE 검색 SQL 이 그 안에서만 돈다. `fill_md_text` 도 허용 집합 밖은 채우지 않는다. 정책·sidecar·topic 행이 없으면 기동 실패(fail-closed). `provenance["retrieval_policy"]` 에 cutoff·허용 편수·허용 집합 sha256·sidecar meta | 실측 physical-adversarial: 정책 없음 590편 → 정책 323편, 허용 1,186,466/1,663,704 |
+| `scripts/run_kisti.py` | topic → slug(`topics.kisti.jsonl`, 제목 정규화 매칭)를 자식 프로세스 환경변수 `KISTI_TOPIC_ID` 로, `KISTI_VIEW` 도 함께 넘긴다(`.env` 에 두지 않는다 — topic 마다 다름). 실행 전 `check_policy` 가 정책 행·status ok·sidecar 를 확인해 크레딧을 쓰기 전에 멈춘다. `topics.kisti.jsonl` 밖의 `--title` 은 `--no-policy` 없이는 거부 | `run_args.json` 에 `topic_id`·`policy`·`env_overrides` |
+| `src/modules/preprocessor/preprocessor.py` | (a) `_save_fetcher_provenance`: `fetcher.provenance` 를 `metrics/fetcher_provenance.json` 으로. (b) `_apply_policy_gate`: 필터 통과분에서 `fetcher.is_allowed(_id)` 가 False 인 편을 제거하고 편수를 같은 파일의 `policy_gate` 에 덧붙인다 | 둘 다 fetcher 에 해당 속성이 없으면(원본·common_corpus) 무동작. 검색이 정책 안에서 돌았다면 게이트에 걸리는 편은 0 |
+| `scripts/collect_run.py` | `run.json` 에 `retrieval_policy`(provenance 그대로)·`policy_gate`·`policy_check`(bib 풀 전편을 sidecar 로 재판정, 위반 0 이어야)·`policy_comparable`·`policy_note`. `gt.retrieval_cutoff_at`·`gt.n_gt_refs_cutoff`, `score.denominator_matches_topics` | `--table` 에 "정책 cutoff" 열 |
+
+**검색 결과 밖 id 를 만드는 경로 감사(2026-09-16)**: `full_run.py` 경로에서 논문이 들어오는 입구는 `PaperRecaller._search_papers`(fetcher) 하나다. 이후 `DataCleaner.run` → AttributeTree → outline/본문 → `PostRefiner`(RAG 는 `outputs/<task_id>/papers` 로 매번 새로 인덱스, `llamaindex_store_local=False`) → 표·그림 빌더는 모두 그 task 디렉터리만 읽고, `FigRetrieveRefiner.run()` 은 원본대로 호출되지 않으며 KISTI 레코드는 `image` 가 없다. 인용 키는 논문 BibTeX 의 `bib_name` 이고 LLM 이 만든 키로 corpus 를 다시 조회하는 곳은 없다. `offline_proc(--ref_path)` 는 `full_run.py` 가 쓰지 않는다. 따라서 게이트는 필터 직후 한 곳이면 충분하고, 사후 `policy_check` 가 bib 풀 전편으로 이를 재확인한다.
+
+**분모**: `topics.kisti.jsonl` 의 `n_gt_refs_cutoff`(= `candidates/gap_to_80_refs.jsonl` 의 `tier == in_view`, view kisti-2608 기준). physical-adversarial 150 → **128**. 구 `n_gt_refs`(year ≤ 2025)는 정책 없는 과거 실행에만 쓰며 같은 표에 놓지 않는다.
+
+**하지 않은 것(결정 대기)**: `config.DEFAULT_VIEW` 를 kisti-2608 로 바꾸지 않았다(runner 는 `KISTI_VIEW` 환경변수/`--view` 로 받고, 정책 view 가 kisti-2608 이 아니면 경고). 2026년 arXiv 초록 결손(2602~2606, 36,697편) 회수는 시도하지 않았다.
 
 ## 2. 8/31 실측 — 프로파일 결정의 근거
 
@@ -72,17 +90,18 @@ SURVEYX_MAX_TRUNCATED_RETRY=10
 
 ```bash
 PY=/data2/chanjoong/miniforge3/envs/surveyx/bin/python
-$PY scripts/run_kisti.py --slug instruction-tuning-llms            # 1편
-$PY scripts/run_kisti.py --title "<Topic>"                          # topics.kisti.jsonl 밖의 topic도 가능 (GT 없음)
+export KISTI_VIEW=kisti-2608                                        # 새 규약 view (또는 --view; 기본은 아직 kisti-2512)
+$PY scripts/run_kisti.py --slug instruction-tuning-llms            # 1편 — KISTI_TOPIC_ID=instruction-tuning-llms 자동
+$PY scripts/run_kisti.py --title "<Topic>"                          # topics.kisti.jsonl 의 title 이면 slug 자동, 밖이면 --no-policy 필요
 nohup $PY scripts/run_kisti.py --all --skip-done > outputs/kisti_batch.log 2>&1 &   # 25편
-$PY scripts/run_kisti.py --all --dry-run                            # 명령만 확인
+$PY scripts/run_kisti.py --all --dry-run                            # 명령·정책 사전 점검만
 ```
 
-1. 전제 확인: `.env`의 `SURVEYX_DATA_SOURCE=kisti`, view 디렉터리, 디코딩 프로파일 3키(없으면 경고만).
+1. 전제 확인: `.env`의 `SURVEYX_DATA_SOURCE=kisti`, view 디렉터리, 디코딩 프로파일 3키(없으면 경고만), **topic 정책**(정책 파일·`status: ok` 행·sidecar — 없으면 실행 전에 종료).
 2. `outputs/tmp/request_stats.txt`(전역 누적)를 `.bak`으로 회전 → 이번 편의 기록만 남게 한다.
-3. 실행 전 스냅샷: `.env`(키 마스킹), OpenRouter 키 사용액(`scripts/check_credits.py`, `outputs/credits.log`에도 append).
-4. `tasks/full_run.py --title "<Topic>" --key_words "<Topic>"` (topic 문자열은 `topics.kisti.jsonl`의 `title` 그대로, 양쪽에). 로그 `outputs/logs/kisti_<slug>_<ts>.log`.
-5. 실행 후: `outputs/<task_id>/`를 title로 찾아 `metrics/`에 `env.snapshot.json` · `credits.json`(전후 차분 = 실측 비용) · `run_args.json` · `request_stats.txt` 저장 → `collect_run.py`로 `run.json`.
+3. 실행 전 스냅샷: `.env`(키 마스킹, 실행 환경변수 `KISTI_VIEW`·`KISTI_TOPIC_ID` 반영), view 정체성, OpenRouter 키 사용액(`scripts/check_credits.py`, `outputs/credits.log`에도 append).
+4. `KISTI_VIEW=<view> KISTI_TOPIC_ID=<slug> tasks/full_run.py --title "<Topic>" --key_words "<Topic>"` (topic 문자열은 `topics.kisti.jsonl`의 `title` 그대로, 양쪽에). 로그 `outputs/logs/kisti_<slug>_<ts>.log`. 파이프라인이 `metrics/fetcher_provenance.json` 을 남긴다.
+5. 실행 후: `outputs/<task_id>/`를 title로 찾아 `metrics/`에 `env.snapshot.json` · `view.snapshot.json` · `credits.json`(전후 차분 = 실측 비용) · `run_args.json` · `request_stats.txt` 저장 → `collect_run.py`로 `run.json`.
 
 실패 시: task 디렉터리가 있으면 `run_args.json.status=failed`로 남기고 `run.json`도 만든다. 없으면 요청 기록만 `request_stats.failed.<slug>.<ts>.txt`로 보존. `--skip-done`은 `run.json.status == ok`이고 PDF 쪽수가 있는 topic만 건너뛴다.
 
@@ -94,6 +113,9 @@ $PY scripts/run_kisti.py --all --dry-run                            # 명령만 
 |---|---|---|
 | `topic` `key_words_expanded` `args` `status` `started_at` `log_path` | `tmp_config.json` · `metrics/run_args.json` | |
 | `model` `provider_pin` `temperature` `max_tokens` `retry_truncated` `data_source` `view` `fulltext_limit` | `metrics/env.snapshot.json` | 스냅샷이 없으면 **null** — 현재 `.env`로 대체하지 않는다(그 실행의 조건이 아니므로). `env_source`에 표시 |
+| `fetcher_provenance` `retrieval_policy` `policy_gate` | `metrics/fetcher_provenance.json` (파이프라인 `preprocessor.py` 가 기록) | `retrieval_policy` = `KistiFetcher.provenance["retrieval_policy"]` 그대로: `topic_id` `retrieval_cutoff_at` `exclude_ids` `allowed`/`total` `allowed_sha256` `policy_file` `paper_dates`(sidecar meta). 없으면 **null**(정책 없는 실행). `policy_gate` = 필터 직후 허용 집합 밖 차단 편수 |
+| `policy_check` | bib 풀 전편 × 그 실행 view 의 `paper_dates.json` | `checked` `violations`(0 이어야) `violation_ids` `not_in_sidecar`. adapter 나 sidecar 가 없으면 null/사유 |
+| `policy_comparable` `policy_note` | `retrieval_policy` vs `topics.kisti.jsonl` | 정책이 있고 `topic_id`·`retrieval_cutoff_at` 이 topic 과 같을 때만 **true**. false 인 실행(정책 없음·cutoff 불일치)은 새 규약 결과표에 넣지 않는다 |
 | `view_version` `view_version_label` `view_papers_parquet_sha256` `view_manifest_sha256` `view_papers` `view_manifest_created_at` `view_source` | `metrics/view.snapshot.json` (실행 시작 시점, `run_kisti.py`) | **version_label = papers.parquet sha 앞 8자 / view_manifest created_at** (4 agent 공통 열; v1 `c7b8d4e7 / 2026-09-07T05:10:55Z` · v2 `591b4325 / 2026-09-08T07:01:07Z`). 스냅샷이 없으면 현재 디렉터리로 재고 `view_source`에 post hoc 표시 |
 | `package` `git.{surveyx,kisti_data}` | adapter `PACKAGE_VERSION` · 두 저장소 HEAD/dirty | |
 | `stages` `cost_total_usd` `stage_durations_sec` `duration_sec` | `token_monitor.json` · `time_monitor.json` | 소요는 첫 단계 시작 → 마지막 단계 끝(LaTeX 컴파일 제외) |
@@ -101,7 +123,7 @@ $PY scripts/run_kisti.py --all --dry-run                            # 명령만 
 | `requests` `requests_by_template` `truncated_calls` `truncation_retries` `draft_calls_per_subsection` | `metrics/request_stats.txt` | status별 수, 429 수, 템플릿별 호출 수(요청 prefix 200자 매칭), draft = `fulfill_content(_iteratively)` |
 | `structure` | `latex/survey.tex`(+`\input` tex) · `references.bib` · `survey.pdf` | sections/subsections/words(AutoSurvey `check_survey.measure`와 같은 계산), **references = 인용된 항목 수**(unsrt가 찍는 참고문헌 목록), references_bib_total = bib 전편(필터 통과 풀), citation_runs, pdf_pages |
 | `refs.{arxiv,doi,other,match_keys}` | `references.bib` ∩ 본문 인용 | **인용된 항목만.** SurveyX의 bib에는 필터 통과 전편(예: 196편)이 들어가므로 전편으로 세면 recall·precision이 부풀려진다(파일럿: 전편 기준 16.8%/12.8% → 인용 기준 3.4%/7.2%). 매칭 키 = `doi` 소문자 ∨ `10.48550/arxiv.<base id>` |
-| `gt` `score` | `kisti_data/data/topics.kisti.jsonl` · `candidates/gap_to_80_refs.jsonl`(`tier == in_view`) | recall = 적중/분모(in_view), precision = 적중/identifiable refs. topic이 25편 밖이면 null |
+| `gt` `score` | `kisti_data/data/topics.kisti.jsonl` · `candidates/gap_to_80_refs.jsonl`(`tier == in_view`) | **분모 = `n_gt_refs_cutoff`**(2026-09-14 규약: GT refs ∩ view ∧ 레코드 날짜 상한 < cutoff = `tier == in_view`; `score.denominator_matches_topics` 로 두 출처 일치 확인). recall = 적중/분모, precision = 적중/identifiable refs. `gt.retrieval_cutoff_at`·`gt.n_gt_refs_cutoff`·`gt.n_gt_refs_eligible`(구 분모) 병기. topic이 25편 밖이면 null |
 | `leak` | 그 실행이 쓴 view의 `exclude_keys.txt`(v1 38 · v2 40키, `keys_from`에 디렉터리) · GT 제목 | 키가 **bib 전편**(=검색 풀)의 매칭 키·본문/bib 원문에 0회, GT 제목이 bib title에 0회 → `clean: true`. 미인용이라도 풀에 들어오면 누수다. 제목 검사는 bib에만(topic 문자열이 GT 제목에서 왔으므로 본문엔 당연히 나온다) |
 
 AutoSurvey `run.json`과 겹치는 키(`topic` `args` `model` `provider_pin` `stages` `cost_total_usd` `truncated_calls` `truncation_retries` `structure` `duration_sec`)는 이름을 맞췄다.
@@ -117,12 +139,14 @@ API 호출·파이프라인 실행 없이 mock 으로 위 동작을 고정한다
 | 파일 | 검증 |
 |---|---|
 | `tests/test_chat_agent.py` | temperature 오버라이드(호출부 0.3 → 0.6, batch 포함), max_tokens 전송/미전송, 잘림 폐기→재요청→정상(status 2·2·1), 소진 시 채택(status 3), 재요청 off, 폐기 응답 토큰 가산, HTTP 오류 status 0, 기록 파일 첫 줄 중복 없음 |
-| `tests/test_collect_run.py` | 구조·refs id 유형·매칭 키(버전 제거·소문자), in_view 분모의 recall/precision, 누수(twin id·GT 제목) 검출과 clean, 요청 기록(status·429·템플릿 매칭·draft/소절), env 스냅샷 부재 시 null, `--table` |
-| `tests/test_run_kisti.py` | 요청 기록 회전, task 디렉터리 탐색, `--skip-done` 판정, 크레딧 파싱, run_topic 이 metrics 4종과 run.json 을 남김(성공·실패·task 디렉터리 없음) |
+| `tests/test_collect_run.py` | 구조·refs id 유형·매칭 키(버전 제거·소문자), in_view 분모의 recall/precision, 누수(twin id·GT 제목) 검출과 clean, 요청 기록(status·429·템플릿 매칭·draft/소절), env 스냅샷 부재 시 null, `--table`, **정책**: provenance 없음 → null/비교 불가, provenance 그대로 싣기·comparable, cutoff 불일치 표시, bib 풀 사후 재판정(위반 검출) |
+| `tests/test_run_kisti.py` | 요청 기록 회전, task 디렉터리 탐색, `--skip-done` 판정, 크레딧 파싱, run_topic 이 metrics 4종과 run.json 을 남김(성공·실패·task 디렉터리 없음), **topic 정책**: slug 해석·환경변수 우선·`check_policy`(행 없음/needs_review/sidecar 없음/파일 없음 거부)·자식 env 에 `KISTI_TOPIC_ID`/`KISTI_VIEW` 주입·미등록 title 거부·`--no-policy` |
+| `tests/test_preprocessor_policy.py` | `preprocessor.py` 훅: provenance 파일 기록, 허용 집합 밖 id 제거와 `policy_gate` 기록, is_allowed 없는 fetcher 무변경 (임포트가 무거워 수십 초) |
 
 ## 6. 예산·주의
 
 - 파일럿 실측 편당 **152분 · TM $1.43** → 25편 ≈ **63h · $36**(429 재시도 포함). OpenRouter 키 잔여 $2.57(09-08 08:08) — **키 한도 상향 없이는 배치 불가**.
+- 정책 적용 실행은 `KISTI_VIEW=kisti-2608` 로 시작한다(§1.1). 정책 기동(허용 집합 1.2M id 를 DuckDB 임시 테이블로) 약 17초/편. 첫 편에서 `run.json.policy_check.violations == 0`, `policy_gate.blocked == 0`, `score.denominator_matches_topics == true` 를 확인한다.
 - **키 분리**: 실측 비용(`cost_measured_usd`)은 키 단위 차분이라 같은 키로 다른 agent가 동시에 돌면 오염된다(파일럿에서 SurveyForge와 겹쳐 $2.66 vs TM $1.43). agent별 키 또는 순차 실행.
 - **AttributeTree JSON 복구는 넣었다**(§3, 2026-09-08). 배치 첫 편에서 `run.json.attri.with_attri`가 파일럿의 41/196보다 확실히 올라가는지 확인한다.
 - 동시성은 `CHAT_AGENT_WORKERS=4` 유지. akashml 429(파일럿 59건)는 tenacity가 흡수한다.
@@ -144,6 +168,10 @@ API 호출·파이프라인 실행 없이 mock 으로 위 동작을 고정한다
 | 09-08 | run.json의 refs·recall/precision을 **인용된 항목** 기준으로(bib 전편 아님), 누수는 bib 전편 기준 | §5. 전편 기준은 recall 5배 과대 |
 | 09-08 | AttributeTree JSON 복구(`repair_json_text`) 도입, 프롬프트 원문 유지 | §3. 실패 원인이 프롬프트 예시의 형식 오류로 특정됨 |
 | 09-08 | view 정체성은 실행 시작 시점 스냅샷으로 기록(`view_version` = papers.parquet sha 앞 8자). 파일럿은 **v1** | §1. kisti_data 노티(08:08 UTC v1→v2). metrics JSON을 커밋 대상에 포함 |
+| 09-16 | **reference cutoff = topic 별 GT 최초 공개일**(2025-12-31 고정 폐지), view `kisti-2608`, `KISTI_TOPIC_ID` 를 runner 가 topic 마다 주입 | §1.1. AGENT-HANDOFF §0(교수님 지시 09-14), corpus 쪽 `KistiFetcher` 정책 구현 09-16 |
+| 09-16 | 파이프라인 변경 2곳(provenance 기록·필터 직후 허용 집합 게이트) — fetcher 속성이 없으면 무동작이라 원 동작 그대로 | §1.1. 입구 감사 결과 검색 밖 id 생성 경로 없음, 게이트는 방어용 |
+| 09-16 | 09-08 파일럿은 **정책 없음(비교 대상 아님)** 으로 표기(`run.json.policy_comparable=false`). 분모 `n_gt_refs_cutoff`=128(구 149) | §1.1·§5. 새 규약 결과와 같은 표에 놓지 않는다 |
+| 09-16 | `config.DEFAULT_VIEW`·2026년 arXiv 초록 결손은 손대지 않음 | 결정 대기(AGENT-HANDOFF §0 5·6번) |
 
 ## 8. 관련 문서
 

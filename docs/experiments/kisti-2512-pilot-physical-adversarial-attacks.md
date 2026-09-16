@@ -1,5 +1,7 @@
 # KISTI 파일럿 1편 — physical-adversarial-attacks (2026-09-08)
 
+> **2026-09-16 표기**: 이 실행은 **view kisti-2512 v1 + topic 정책 없음**(`KISTI_TOPIC_ID` 미설정, reference cutoff 를 GT 최초 공개일 2022-11-03 으로 걸지 않음)이다. 2026-09-14 규약(topic 별 cutoff, [../kisti-run.md](../kisti-run.md) §1.1)에 따른 결과와 **같은 표에 놓지 않는다**(`run.json.policy_comparable=false`). 아래 recall/precision 의 분모 149 는 구 규약(year ≤ 2025, in_view)이고, 새 채점 분모 `n_gt_refs_cutoff` 는 **128** 이다.
+
 KISTI corpus(view `kisti-2512`) + 디코딩 프로파일(temperature 0.6 · max_tokens 8192 · 잘림 재요청)로 SurveyX를 처음 끝까지 돌린 기록. 목적은 ① plain text 원문에서 파이프라인이 도는지, ② DOI id가 어디서 깨지는지, ③ 편당 시간·비용·구조·recall의 실측. 수치는 `outputs/2026-09-08-0536_Visua/run.json`(커밋됨)과 `metrics/`에서 가져왔다. 실행 조건·절차의 정본은 [../kisti-run.md](../kisti-run.md).
 
 ## 0. 한눈에

@@ -28,6 +28,12 @@
   "view_papers": 1651701,
   "view_manifest_created_at": "2026-09-07T05:10:55+00:00",
   "view_source": "metrics/view.snapshot.json (실행 시작 시점)",
+  "fetcher_provenance": null,
+  "retrieval_policy": null,
+  "policy_gate": null,
+  "policy_check": null,
+  "policy_comparable": false,
+  "policy_note": "정책 없음 — 2026-09-14 규약(topic 별 GT 최초 공개일 cutoff) 이전 실행. view kisti-2512 v1, KISTI_TOPIC_ID 미설정. 새 규약 결과표에 넣지 않는다. score 는 구 분모(in_view 149, year ≤ 2025)이며 새 분모 n_gt_refs_cutoff=128 과 다르다 (2026-09-16 표기 추가)",
   "package": "science_datalake_260825",
   "fulltext_limit": null,
   "git": {
@@ -234,10 +240,13 @@
     "gt_doi": "10.1145/3793659",
     "gt_title": "Visual Adversarial Attacks and Defenses in the Physical World: A Survey",
     "n_gt_refs_eligible": 150,
-    "n_gt_refs_in_view": 149
+    "n_gt_refs_in_view": 149,
+    "retrieval_cutoff_at": "2022-11-03",
+    "n_gt_refs_cutoff": 128,
+    "n_gt_refs_cutoff_view": "kisti-2608 c1a0c6b3"
   },
   "score": {
-    "denominator": "GT refs ∩ in_view (candidates/gap_to_80_refs.jsonl tier==in_view)",
+    "denominator": "구 규약: GT refs ∩ in_view (year ≤ 2025, kisti-2512 v1 시점 gap_to_80_refs.jsonl tier==in_view = 149). 새 규약 분모 n_gt_refs_cutoff=128 과 비교 불가",
     "refs_identifiable": 69,
     "hits": 5,
     "recall": 0.0336,
@@ -248,7 +257,8 @@
       "10.48550/arxiv.1712.02494",
       "10.48550/arxiv.1803.04683",
       "10.48550/arxiv.1810.00069"
-    ]
+    ],
+    "denominator_matches_topics": false
   },
   "leak": {
     "exclude_keys": 38,
