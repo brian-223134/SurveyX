@@ -22,12 +22,18 @@ temperature·max_tokens·view·잘림·재요청·누수 여부는 어디에도 
                                     status 1 정상 · 0 HTTP 오류 · 2 잘림 폐기 · 3 잘림 채택
     metrics/env.snapshot.json       실행 시점 .env (키 마스킹) — 없으면 현재 .env 로 대체하고 표시
     metrics/credits.json            OpenRouter 키 사용액 전후 차분 (실측 비용)
-    metrics/run_args.json           실행 인자·시작/종료 시각·returncode
+    metrics/run_args.json           실행 인자·시작/종료 시각·returncode·topic_id·정책 사전 점검
+    metrics/fetcher_provenance.json KistiFetcher.provenance (preprocessor 가 기록) — view·manifest sha·
+                                    retrieval_policy(cutoff·허용 편수·허용 집합 sha256·sidecar meta)·policy_gate
     latex/survey.tex · latex/references.bib · survey.pdf
 외부:
-    $KISTI_DATA_ROOT/data/topics.kisti.jsonl          title → slug · gt_doi · n_gt_refs
-    $KISTI_DATA_ROOT/data/views/<view>/exclude_keys.txt   누수 검사 키 38개 (GT 본체 + twin)
-    $KISTI_DATA_ROOT/candidates/gap_to_80_refs.jsonl   tier == in_view 가 recall 분모
+    $KISTI_DATA_ROOT/data/topics.kisti.jsonl          title → slug · gt_doi · n_gt_refs · retrieval_cutoff_at · n_gt_refs_cutoff
+    $KISTI_DATA_ROOT/data/views/<view>/exclude_keys.txt   누수 검사 키 (GT 본체 + twin)
+    $KISTI_DATA_ROOT/data/views/<view>/paper_dates.json   정책 사후 검사(bib 풀의 cutoff 위반 0건 확인)
+    $KISTI_DATA_ROOT/candidates/gap_to_80_refs.jsonl   tier == in_view 가 recall 분모 (2026-09-14 규약: = n_gt_refs_cutoff)
+
+topic 정책 (2026-09-14 규약): run.json['retrieval_policy'] 는 fetcher provenance 그대로. 없으면 null 이고
+policy_comparable=false — 정책 없는 실행(2026-09-14 이전 파일럿 등)은 새 규약 결과와 같은 표에 놓지 않는다.
     $KISTI_DATA_ROOT/candidates/<domain>/<slug>/refs.json   GT 제목 (bib title 누수 검사)
 """
 
@@ -61,6 +67,7 @@ ENV_KEYS_OF_INTEREST = [
     "OPENROUTER_ALLOW_FALLBACKS", "SURVEYX_TEMPERATURE", "SURVEYX_MAX_TOKENS",
     "SURVEYX_RETRY_TRUNCATED", "SURVEYX_MAX_TRUNCATED_RETRY", "SURVEYX_HTTP_TIMEOUT",
     "SURVEYX_DATA_SOURCE", "KISTI_VIEW", "KISTI_FULLTEXT_LIMIT", "KISTI_ADAPTER_DIR",
+    "KISTI_TOPIC_ID", "KISTI_TOPIC_POLICY",
 ]
 
 
@@ -396,6 +403,60 @@ def leak_check(view_dir: Path, ref_entries: list[dict], texts: str, gt_title_str
             "clean": not in_refs and not in_text and not title_hits}
 
 
+# --------------------------------------------------------------------------- topic policy (2026-09-14)
+def _policy_module():
+    """adapter/common/retrieval_policy — 4 agent 공통 판정 규칙. 없으면 None (사후 검사만 건너뛴다)."""
+    try:
+        if str(ADAPTER_DIR) not in sys.path:
+            sys.path.insert(0, str(ADAPTER_DIR))
+        from common import retrieval_policy  # type: ignore
+        return retrieval_policy
+    except Exception:
+        return None
+
+
+def policy_check(view_dir: Path, policy: dict, entries: list[dict]) -> dict | None:
+    """bib 풀(필터 통과 전편)의 id 를 sidecar 날짜로 다시 판정한다 — fetcher 가 허용 집합 안에서 검색했다면 위반 0.
+    KISTI id 는 arXiv base id 또는 소문자 DOI 이고 parse_bib 의 `id` 와 같은 표기다."""
+    rp = _policy_module()
+    cutoff = (policy or {}).get("retrieval_cutoff_at")
+    if rp is None or not cutoff:
+        return None
+    dates, _meta = rp.load_paper_dates(view_dir)
+    if not dates:
+        return {"checked": 0, "violations": None, "note": f"sidecar 없음: {view_dir / 'paper_dates.json'}"}
+    excl = {str(e).lower() for e in (policy.get("exclude_ids") or [])}
+    ids = [e["id"] for e in entries if e.get("id")]
+    viol, unknown = [], []
+    for pid in ids:
+        if pid.lower() in excl:
+            viol.append({"id": pid, "reason": "exclude_id"})
+            continue
+        d = dates.get(pid)
+        if d is None:
+            unknown.append(pid)
+        elif not rp.is_allowed(d, cutoff):
+            viol.append({"id": pid, "reason": f"date {d} ≥ cutoff {cutoff}"})
+    return {"rule": "upper_bound(sidecar date) < retrieval_cutoff_at ∧ id ∉ exclude_ids", "cutoff": cutoff,
+            "sidecar": str(view_dir / "paper_dates.json"), "checked": len(ids), "violations": len(viol),
+            "violation_ids": viol[:50], "not_in_sidecar": len(unknown), "not_in_sidecar_ids": unknown[:20]}
+
+
+def policy_status(policy: dict | None, topic: dict | None, prov_present: bool) -> tuple[bool, str]:
+    """(비교 가능 여부, 사유). 정책이 topic 의 cutoff 와 일치할 때만 새 규약 결과로 비교한다."""
+    if policy is None:
+        return False, ("정책 없음 — KISTI_TOPIC_ID 미설정 실행 (2026-09-14 규약 비교 대상 아님)" if prov_present
+                       else "정책 없음 — fetcher provenance 없음 (2026-09-14 규약 이전 실행, 비교 대상 아님)")
+    if topic is None:
+        return False, "topics.kisti.jsonl 밖의 topic — GT 없음"
+    if policy.get("topic_id") != topic.get("slug"):
+        return False, f"정책 topic_id={policy.get('topic_id')!r} ≠ slug={topic.get('slug')!r}"
+    want = topic.get("retrieval_cutoff_at")
+    if want and policy.get("retrieval_cutoff_at") != want:
+        return False, f"정책 cutoff {policy.get('retrieval_cutoff_at')} ≠ topics.kisti.jsonl {want}"
+    return True, "ok"
+
+
 # --------------------------------------------------------------------------- build
 def build(task_id: str, request_stats: Path | None = None) -> dict:
     task_dir = OUTPUTS / task_id
@@ -487,9 +548,15 @@ def build(task_id: str, request_stats: Path | None = None) -> dict:
         hits = sorted(set(ref_match) & set(in_view))
         gt = {"domain": topic["domain"], "slug": topic["slug"], "gt_doi": topic.get("gt_doi"),
               "gt_title": gt_title_str, "n_gt_refs_eligible": topic.get("n_gt_refs"),
+              "retrieval_cutoff_at": topic.get("retrieval_cutoff_at"),          # GT 최초 공개일 (2026-09-14 규약)
+              "n_gt_refs_cutoff": topic.get("n_gt_refs_cutoff"),                # 채점 분모 (topics.kisti.jsonl)
+              "n_gt_refs_cutoff_view": topic.get("n_gt_refs_cutoff_view"),
               "n_gt_refs_in_view": len(in_view)}
+        n_cut = topic.get("n_gt_refs_cutoff")
         score = {
-            "denominator": "GT refs ∩ in_view (candidates/gap_to_80_refs.jsonl tier==in_view)",
+            "denominator": "n_gt_refs_cutoff = GT refs ∩ view ∧ upper_bound(date) < retrieval_cutoff_at "
+                           "(candidates/gap_to_80_refs.jsonl tier==in_view)",
+            "denominator_matches_topics": (len(in_view) == n_cut) if n_cut is not None else None,
             "refs_identifiable": len(ref_match),
             "hits": len(hits),
             "recall": round(len(hits) / len(in_view), 4) if in_view else None,
@@ -510,6 +577,13 @@ def build(task_id: str, request_stats: Path | None = None) -> dict:
             texts += p.read_text(encoding="utf-8", errors="replace") + "\n"
     leak = leak_check(view_dir, bib_all, texts, gt_title_str)
     leak["keys_from"] = str(view_dir) + ("" if view_dir_matches else " (스냅샷과 다른 view — 보존본 없음)")
+
+    # ---- topic 정책 (2026-09-14 규약): 파이프라인이 남긴 fetcher provenance 그대로 싣고, bib 풀을 사후 재판정한다
+    prov = read_json(metrics / "fetcher_provenance.json")
+    policy = (prov or {}).get("retrieval_policy") or None
+    policy_gate = (prov or {}).get("policy_gate")
+    comparable, policy_reason = policy_status(policy, topic, prov is not None)
+    pcheck = policy_check(view_dir, policy, bib_all) if policy else None
 
     # ---- provenance
     package = None
@@ -551,6 +625,13 @@ def build(task_id: str, request_stats: Path | None = None) -> dict:
         "view_papers": vsnap.get("view_papers"),
         "view_manifest_created_at": vsnap.get("manifest_created_at"),
         "view_source": view_source,
+        "fetcher_provenance": ({k: v for k, v in prov.items() if k not in ("retrieval_policy", "policy_gate")}
+                               if prov else None),
+        "retrieval_policy": policy,          # KistiFetcher.provenance["retrieval_policy"] — cutoff·허용 편수·allowed_sha256·sidecar meta
+        "policy_gate": policy_gate,          # preprocessor 게이트: 허용 집합 밖 id 차단 편수 (검색이 정책 안이면 0)
+        "policy_check": pcheck,              # 사후 재판정: bib 풀의 cutoff 위반·제외 id (0 이어야 함)
+        "policy_comparable": comparable,     # false 면 새 규약 결과표에 넣지 않는다
+        "policy_note": policy_reason,
         "package": package,
         "fulltext_limit": env_sel.get("KISTI_FULLTEXT_LIMIT"),
         "git": {"surveyx": git_state(REPO_ROOT), "kisti_data": git_state(KISTI_ROOT)},
@@ -590,9 +671,18 @@ def table() -> str:
         r = read_json(Path(p), {})
         s, rq, sc, lk = r.get("structure", {}), r.get("requests", {}), r.get("score") or {}, r.get("leak", {})
         dur = f"{r['duration_sec'] // 60}m" if r.get("duration_sec") else "-"
-        rows.append("| {tid} | {topic} | {view} | {cost} | {meas} | {dur} | {sec}/{sub} · {w} | {refs} ({ax}/{doi}) | {dps} | {td}/{ta} | {e429} | {rec}/{prec} (n={n}) | {leak} |".format(
+        pol = r.get("retrieval_policy") or {}
+        pc = r.get("policy_check") or {}
+        if pol:
+            viol = pc.get("violations")
+            policy_col = f"<{pol.get('retrieval_cutoff_at')} (위반 {viol if viol is not None else '-'})"
+            if not r.get("policy_comparable", True):
+                policy_col += " ⚠"
+        else:
+            policy_col = "없음 (비교 대상 아님)"
+        rows.append("| {tid} | {topic} | {view} | {pol} | {cost} | {meas} | {dur} | {sec}/{sub} · {w} | {refs} ({ax}/{doi}) | {dps} | {td}/{ta} | {e429} | {rec}/{prec} (n={n}) | {leak} |".format(
             tid=r.get("task_id"), topic=(r.get("topic") or "")[:40],
-            view=(r.get("view_version_label") or r.get("view_version") or "-"),
+            view=(r.get("view_version_label") or r.get("view_version") or "-"), pol=policy_col,
             cost=f"${r.get('cost_total_usd', 0):.2f}",
             meas=(f"${r['cost_measured_usd']:.2f}" if r.get("cost_measured_usd") is not None else "-"),
             dur=dur, sec=s.get("sections"), sub=s.get("subsections"), w=s.get("words"),
@@ -605,8 +695,8 @@ def table() -> str:
             n=r.get("gt", {}).get("n_gt_refs_in_view") if r.get("gt") else "-",
             leak=("clean" if lk.get("clean") else "LEAK"),
         ))
-    head = ("| task_id | topic | view (sha8 / created_at) | cost(TM) | cost(실측) | 소요 | sec/sub · words | refs (arXiv/DOI) | draft/sub "
-            "| 잘림 폐기/채택 | 429 | recall/precision | 누수 |\n|---|---|---|---|---|---|---|---|---|---|---|---|---|")
+    head = ("| task_id | topic | view (sha8 / created_at) | 정책 cutoff | cost(TM) | cost(실측) | 소요 | sec/sub · words | refs (arXiv/DOI) | draft/sub "
+            "| 잘림 폐기/채택 | 429 | recall/precision | 누수 |\n|---|---|---|---|---|---|---|---|---|---|---|---|---|---|")
     return head + "\n" + "\n".join(rows)
 
 

@@ -9,6 +9,8 @@
 - 누수: 제외 키가 refs·원문에 있으면 clean=False, GT 제목이 bib title 에 있으면 검출
 - 요청 기록: status 별 수, 429, 템플릿 매칭(실제 프롬프트 파일 기준), draft/소절
 - env 스냅샷이 없으면 모델·프로파일은 null (현재 .env 로 대체하지 않음)
+- topic 정책(2026-09-14 규약): metrics/fetcher_provenance.json 의 retrieval_policy 가 run.json 에 그대로 실리고
+  topic 의 cutoff 와 맞으면 policy_comparable=true; 없으면 null + false(비교 대상 아님); bib 풀 사후 재판정(policy_check)
 """
 
 import json
@@ -30,6 +32,11 @@ TITLE = "Visual Adversarial Attacks and Defenses in the Physical World"
 GT_TITLE = TITLE + ": A Survey"
 SLUG, DOMAIN = "physical-adversarial-attacks", "security"
 TWIN = "2211.01671"
+CUTOFF = "2022-11-03"
+REAL_ADAPTER = Path("/data2/chanjoong/kisti_data/adapter")     # 사후 재판정 테스트만 실 adapter 규칙을 쓴다 (없으면 skip)
+FAKE_POLICY = {"topic_id": SLUG, "retrieval_cutoff_at": CUTOFF, "exclude_ids": ["10.1145/3793659", TWIN],
+               "allowed": 1186466, "total": 1663704, "allowed_sha256": "9b7395ec" + "0" * 56,
+               "policy_file": "/x/topic_policy.kisti-2608.jsonl", "paper_dates": {"created_at": "2026-09-14T13:26:00Z"}}
 
 SURVEY_TEX = r"""
 \documentclass{article}
@@ -106,6 +113,7 @@ class CollectRunTest(unittest.TestCase):
         (self.kisti / "data" / "views" / "kisti-2512").mkdir(parents=True)
         (self.kisti / "data" / "topics.kisti.jsonl").write_text(json.dumps({
             "title": TITLE, "n_gt_refs": 165, "gt_doi": "10.1145/3793659", "domain": DOMAIN, "slug": SLUG,
+            "retrieval_cutoff_at": CUTOFF, "n_gt_refs_cutoff": 3, "n_gt_refs_cutoff_view": "kisti-2608 c1a0c6b3",
         }) + "\n", encoding="utf-8")
         view = self.kisti / "data" / "views" / "kisti-2512"
         (view / "exclude_keys.txt").write_text(
@@ -312,6 +320,68 @@ class CollectRunTest(unittest.TestCase):
         self.assertIsNone(r["view_version"])                 # fixture manifest 에 files_sha256 없음
         self.assertTrue(r["leak"]["keys_from"].endswith("kisti-2512"))
         self.assertEqual(r["leak"]["exclude_keys"], 2)
+
+    # ---- topic 정책 (2026-09-14 규약)
+    def _write_provenance(self, policy=FAKE_POLICY, gate=None):
+        prov = {"data_source": "kisti", "view": "kisti-2512", "view_manifest_sha256": "ab" * 32, "package": "sdl_260825",
+                "retrieval_policy": policy}
+        if gate is not None:
+            prov["policy_gate"] = gate
+        (self.outputs / self.task_id / "metrics" / "fetcher_provenance.json").write_text(json.dumps(prov), encoding="utf-8")
+
+    def test_no_provenance_means_no_policy_and_not_comparable(self):
+        r = collect_run.build(self.task_id)
+        self.assertIsNone(r["retrieval_policy"])
+        self.assertIsNone(r["fetcher_provenance"])
+        self.assertIsNone(r["policy_check"])
+        self.assertFalse(r["policy_comparable"])
+        self.assertIn("이전 실행", r["policy_note"])
+        self.assertEqual(r["gt"]["retrieval_cutoff_at"], CUTOFF)             # topic 쪽 cutoff 는 항상 기록
+        self.assertEqual(r["gt"]["n_gt_refs_cutoff"], 3)
+        self.assertTrue(r["score"]["denominator_matches_topics"])            # in_view 3 == n_gt_refs_cutoff 3
+        collect_run.write_run(self.task_id)
+        self.assertIn("| 없음 (비교 대상 아님) |", collect_run.table())
+
+    def test_provenance_policy_is_carried_and_comparable(self):
+        self._write_provenance(gate={"stage": "after filter, before fulltext", "checked": 196, "blocked": 0, "blocked_ids": []})
+        r = collect_run.build(self.task_id)
+        self.assertEqual(r["retrieval_policy"], FAKE_POLICY)                 # fetcher provenance 그대로
+        self.assertEqual(r["fetcher_provenance"]["view_manifest_sha256"], "ab" * 32)
+        self.assertNotIn("retrieval_policy", r["fetcher_provenance"])
+        self.assertEqual(r["policy_gate"]["blocked"], 0)
+        self.assertTrue(r["policy_comparable"])
+        self.assertEqual(r["policy_note"], "ok")
+        # fixture 에 sidecar 가 없다: adapter 를 못 찾으면 None, 찾으면(다른 테스트가 sys.path 에 넣어 둔 경우) 위반 판정 없이 사유만
+        pc = r["policy_check"]
+        self.assertTrue(pc is None or (pc["violations"] is None and "sidecar 없음" in pc["note"]))
+        collect_run.write_run(self.task_id)
+        self.assertIn(f"| <{CUTOFF} (위반 -) |", collect_run.table())
+
+    def test_policy_mismatch_is_flagged(self):
+        self._write_provenance(policy={**FAKE_POLICY, "retrieval_cutoff_at": "2025-12-31"})
+        r = collect_run.build(self.task_id)
+        self.assertFalse(r["policy_comparable"])
+        self.assertIn("2025-12-31", r["policy_note"])
+        self._write_provenance(policy=None)                                    # KISTI_TOPIC_ID 미설정 실행
+        r = collect_run.build(self.task_id)
+        self.assertIsNone(r["retrieval_policy"])
+        self.assertIn("KISTI_TOPIC_ID 미설정", r["policy_note"])
+
+    @unittest.skipUnless((REAL_ADAPTER / "common" / "retrieval_policy.py").exists(), "kisti_data adapter 없음")
+    def test_policy_check_flags_post_cutoff_pool_entries(self):
+        """bib 풀(전편)을 sidecar 날짜로 재판정: k1(2017-12)·k3(2017-07) 허용, k2(2023-05-15) 위반, 미등재 id 는 따로 센다."""
+        view = self.kisti / "data" / "views" / "kisti-2512"
+        (view / "paper_dates.json").write_text(json.dumps({"meta": {}, "dates": {
+            "1712.09665": "2017-12", "10.1145/3589334.3645719": "2023-05-15", "1707.08945": "2017-07"}}), encoding="utf-8")
+        self._write_provenance()
+        with mock.patch.object(collect_run, "ADAPTER_DIR", REAL_ADAPTER):
+            r = collect_run.build(self.task_id)
+        pc = r["policy_check"]
+        self.assertEqual((pc["checked"], pc["violations"]), (3, 1))
+        self.assertEqual(pc["violation_ids"][0]["id"], "10.1145/3589334.3645719")
+        self.assertEqual(pc["not_in_sidecar"], 0)
+        self.assertTrue(pc["sidecar"].endswith("kisti-2512/paper_dates.json"))
+        self.assertIn(f"| <{CUTOFF} (위반 1) |", collect_run.table() if collect_run.write_run(self.task_id) else "")
 
     def test_attri_summary_from_log(self):
         log = self.tmp / "run.log"
