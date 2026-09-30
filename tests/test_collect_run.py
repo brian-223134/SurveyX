@@ -199,6 +199,19 @@ class CollectRunTest(unittest.TestCase):
         self.assertAlmostEqual(sc["recall"], 2 / 3, places=4)
         self.assertAlmostEqual(sc["precision"], 2 / 3, places=4)
 
+    def test_in_view_without_kisti_doi_uses_view_id(self):
+        # r4: overlay 로 들어온 GT ref 는 kisti_doi 가 비고 view_id(arXiv base id ∨ 소문자 DOI)만 있다
+        rows = [
+            {"slug": SLUG, "tier": "in_view", "kisti_doi": "10.1000/base"},
+            {"slug": SLUG, "tier": "in_view", "kisti_doi": None, "view_id": "2502.00955"},
+            {"slug": SLUG, "tier": "in_view", "kisti_doi": None, "view_id": "10.18653/V1/2024.ACL-LONG.1"},
+            {"slug": SLUG, "tier": "post", "kisti_doi": None, "view_id": "2504.00001"},
+        ]
+        (self.kisti / "candidates" / "gap_to_80_refs.jsonl").write_text(
+            "\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8")
+        self.assertEqual(collect_run.gt_in_view_keys(SLUG), [
+            "10.1000/base", "10.18653/v1/2024.acl-long.1", "10.48550/arxiv.2502.00955"])
+
     def test_requests_and_draft_ratio(self):
         r = collect_run.build(self.task_id)
         q = r["requests"]
