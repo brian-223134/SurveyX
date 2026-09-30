@@ -1,0 +1,26 @@
+{
+  "args": "--title \"A Survey on the Optimization of Large Language Model-based Agents\" --key_words \"A Survey on the Optimization of Large Language Model-based Agents\"",
+  "status": "ok",
+  "returncode": 0,
+  "view": "kisti-2608-r4",
+  "topic_id": "llm-agent-optimization",
+  "policy": {
+    "topic_id": "llm-agent-optimization",
+    "retrieval_cutoff_at": "2025-03-16",
+    "exclude_ids": [
+      "10.1145/3789261",
+      "2503.12434"
+    ],
+    "policy_file": "/data2/chanjoong/survey-agent/AutoSurvey/data/topic_policy.kisti-2608-r4.jsonl",
+    "corpus_snapshot_id": "kisti-2608-r4 papers.parquet sha256:32a77a486c2c750182fb48a44c6bb5c04e46af15e7eae3407465ea1e418816cc",
+    "sidecar": "/data2/chanjoong/kisti_data/data/views/kisti-2608-r4/paper_dates.json"
+  },
+  "env_overrides": {
+    "KISTI_VIEW": "kisti-2608-r4",
+    "KISTI_TOPIC_ID": "llm-agent-optimization"
+  },
+  "started_at": "2026-09-30 04:16:45",
+  "ended_at": "2026-09-30 07:41:14",
+  "log_path": "outputs/logs/kisti_llm-agent-optimization_20260930-041644.log",
+  "python": "/data2/chanjoong/miniforge3/envs/surveyx/bin/python"
+}

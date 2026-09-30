@@ -1,0 +1,42 @@
+{
+  "data_source": "kisti",
+  "view": "kisti-2608-r4",
+  "view_manifest_sha256": "6517834e85646ad8d1d516be702917823691cddf4ca38e2abc2f8f809f4262dd",
+  "package": "science_datalake_260825",
+  "retrieval_policy": {
+    "topic_id": "llm-agent-optimization",
+    "topic": "A Survey on the Optimization of Large Language Model-based Agents",
+    "retrieval_cutoff_at": "2025-03-16",
+    "gt_first_public_source": "arxiv:2503.12434 v1 published (twin)",
+    "exclude_ids": [
+      "10.1145/3789261",
+      "2503.12434"
+    ],
+    "policy_file": "/data2/chanjoong/survey-agent/AutoSurvey/data/topic_policy.kisti-2608-r4.jsonl",
+    "rule": "upper_bound(record date) < cutoff ∧ id ∉ exclude_ids (search runs inside the allowed set)",
+    "allowed": 1541302,
+    "total": 1697512,
+    "excluded": {
+      "after_cutoff_day": 98272,
+      "after_cutoff_year": 29,
+      "after_cutoff_month": 57909
+    },
+    "allowed_sha256": "619a352efda94c4ea749ddba76edcddddfe278675dd298eea8cfda69351eeac3",
+    "sha256_rule": "sha256('\\n'.join(sorted(allowed_ids)))",
+    "paper_dates": {
+      "created_at": "2026-09-30T02:11:54+00:00",
+      "by_precision": {
+        "month": 462193,
+        "day": 1230756,
+        "year": 4563
+      },
+      "view_papers_sha256": "32a77a486c2c750182fb48a44c6bb5c04e46af15e7eae3407465ea1e418816cc"
+    }
+  },
+  "policy_gate": {
+    "stage": "after filter, before fulltext",
+    "checked": 193,
+    "blocked": 0,
+    "blocked_ids": []
+  }
+}

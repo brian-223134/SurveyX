@@ -1,0 +1,17 @@
+{
+  "before": {
+    "label": "before:llm-agent-optimization",
+    "at": "2026-09-30 04:16:45",
+    "key_used_usd": 29.9348,
+    "account_used_usd": 3712.4104,
+    "raw": "2026-09-30 04:16:45 [before:llm-agent-optimization]  account: purchased=$4100.5500  used=$3712.4104  remaining=$388.1396\n2026-09-30 04:16:45 [before:llm-agent-optimization]  key(sk-or-v1-f7a...e3f): limit=$40.00  used=$29.9348  today=$0.5652  remaining=$10.0652"
+  },
+  "after": {
+    "label": "after:llm-agent-optimization",
+    "at": "2026-09-30 07:41:16",
+    "key_used_usd": 33.4024,
+    "account_used_usd": 3764.9704,
+    "raw": "2026-09-30 07:41:15 [after:llm-agent-optimization]  account: purchased=$4100.5500  used=$3764.9704  remaining=$335.5796\n2026-09-30 07:41:15 [after:llm-agent-optimization]  key(sk-or-v1-f7a...e3f): limit=$40.00  used=$33.4024  today=$4.0327  remaining=$6.5976"
+  },
+  "measured_usd": 3.4676
+}

@@ -1,4 +1,4 @@
-# KISTI corpus 실행 — 디코딩 프로파일·topic 정책·편당 기록 (2026-09-16 기준)
+# KISTI corpus 실행 — 디코딩 프로파일·topic 정책·편당 기록 (2026-09-30 기준)
 
 SurveyX 쪽 **현행 정본**이다. corpus·adapter·topic·평가 규약의 정본은 `kisti_data/docs/asg/AGENT-HANDOFF.md`(4 agent 공통)와 `kisti_data/docs/asg/surveyx.md`(SurveyX 설계)이고, 이 문서는 그 조건을 SurveyX 코드에 어떻게 맞췄는지와 실행·기록 절차를 적는다. 결정이 바뀌면 §7 결정 로그부터 고친다.
 
@@ -7,15 +7,15 @@ SurveyX 쪽 **현행 정본**이다. corpus·adapter·topic·평가 규약의 �
 | 항목 | 값 |
 |---|---|
 | 목표 | 4 agent(AutoSurvey · SurveyForge · SurveyX · LLM×MapReduce-V2)를 같은 corpus·백본·topic 25편으로 돌려 GT 참고문헌 대비 recall·precision 비교 |
-| corpus | KISTI Science Data Lake 파생 스토어 → **view `kisti-2608` 1,663,704편(시간 컷 없음, `c1a0c6b3 / 2026-09-14T13:18:56Z`)**. 이전 `kisti-2512`(v1 1,651,701 · v2 1,651,487)는 정책 없는 파일럿에만. asg-common-corpus(bench-2512)는 2026-09-07부로 미사용 |
-| **reference cutoff** | **topic 별 GT survey 최초 공개일**(`retrieval_cutoff_at`, 2026-09-14 규약 — §1.1). 2025-12-31 고정 아님. `KISTI_TOPIC_ID=<slug>` 로 `KistiFetcher` 가 허용 집합 **안에서** 검색·원문 조회. 채점 분모 `n_gt_refs_cutoff`(physical-adversarial 150 → **128**) |
+| corpus | KISTI Science Data Lake 파생 스토어 → **view `kisti-2608-r4` 1,697,512편(시간 컷 없음, `32a77a48 / 2026-09-30T02:05:49Z`, 2026-09-30 채택)** = r2 + GT survey reference 원문 확보분 1,258편. 그 전 `kisti-2608`(1,663,704, `c1a0c6b3`)·r2 결과와는 분모가 달라 같은 표에 놓지 않는다. 이전 `kisti-2512`(v1 1,651,701 · v2 1,651,487)는 정책 없는 파일럿에만. asg-common-corpus(bench-2512)는 2026-09-07부로 미사용 |
+| **reference cutoff** | **topic 별 GT survey 최초 공개일**(`retrieval_cutoff_at`, 2026-09-14 규약 — §1.1). 2025-12-31 고정 아님. `KISTI_TOPIC_ID=<slug>` 로 `KistiFetcher` 가 허용 집합 **안에서** 검색·원문 조회. 채점 분모 `n_gt_refs_cutoff`(r4 합계 **4,010**, llm-agent-optimization **190**) |
 | 데이터 소스 | `.env` `SURVEYX_DATA_SOURCE=kisti` → `KistiFetcher`(view parquet ILIKE + body_store 원문 + authors/venue BibTeX). 정책 스모크 통과(2026-09-16: physical-adversarial "adversarial patch, physical attack" 323편, cutoff 위반·제외 id 0건, 기동 17초) |
 | 백본 | `meta-llama/llama-3.3-70b-instruct` @ OpenRouter, provider 핀 `akashml/fp8`, fallback 없음 |
 | 디코딩 프로파일 | **temperature 0.6(전 호출) · max_tokens 8192 · 잘림 재요청 최대 10회** — `.env` 4줄, §3 |
 | 출력 분량 | 통제하지 않는다. SurveyX 기본값(섹션·소절 수, 단어 수, refs 수는 agent 속성으로 기록) |
-| 실행 | `KISTI_VIEW=kisti-2608 scripts/run_kisti.py --slug <slug>` 또는 `--all` (§4). runner 가 topic → slug 를 `KISTI_TOPIC_ID` 로 넣고 정책 파일·sidecar 를 실행 전에 확인한다. 파이프라인은 `tasks/full_run.py` 그대로(provenance 기록·허용 집합 게이트 2곳만 추가, §1.1) |
+| 실행 | `KISTI_VIEW=kisti-2608-r4 scripts/run_kisti.py --slug <slug>` 또는 `--all` (§4). runner 가 topic → slug 를 `KISTI_TOPIC_ID` 로 넣고 정책 파일·sidecar 를 실행 전에 확인한다. 파이프라인은 `tasks/full_run.py` 그대로(provenance 기록·허용 집합 게이트 2곳만 추가, §1.1) |
 | 기록 | 편당 `outputs/<task_id>/run.json` (`scripts/collect_run.py`, §5) — `retrieval_policy`(cutoff·허용 편수·허용 집합 sha256)·`policy_check`(bib 풀 위반 0건)·`policy_comparable`. `.gitignore` 예외로 커밋에 들어간다 |
-| 진행 | **정책 없는 1편 파일럿 완료**(2026-09-08, physical-adversarial-attacks, view kisti-2512 v1 · **KISTI_TOPIC_ID 미설정 → 새 규약 비교 대상 아님**) — [experiments/kisti-2512-pilot-physical-adversarial-attacks.md](experiments/kisti-2512-pilot-physical-adversarial-attacks.md). 정책 적용 실행 **미착수**(§6) |
+| 진행 | **정책 없는 1편 파일럿 완료**(2026-09-08, physical-adversarial-attacks, view kisti-2512 v1 · **KISTI_TOPIC_ID 미설정 → 새 규약 비교 대상 아님**) — [experiments/kisti-2512-pilot-physical-adversarial-attacks.md](experiments/kisti-2512-pilot-physical-adversarial-attacks.md). **r4 정책 적용 PoC 1편 완료**(2026-09-30, llm-agent-optimization, recall 0/190 — 검색어 확장에서 "agent" 유실) — [experiments/kisti-2608-r4-poc-llm-agent-optimization.md](experiments/kisti-2608-r4-poc-llm-agent-optimization.md) |
 
 ## 1. 데이터 소스 — KISTI adapter
 
@@ -39,7 +39,7 @@ SurveyX 쪽 **현행 정본**이다. corpus·adapter·topic·평가 규약의 �
 
 **검색 결과 밖 id 를 만드는 경로 감사(2026-09-16)**: `full_run.py` 경로에서 논문이 들어오는 입구는 `PaperRecaller._search_papers`(fetcher) 하나다. 이후 `DataCleaner.run` → AttributeTree → outline/본문 → `PostRefiner`(RAG 는 `outputs/<task_id>/papers` 로 매번 새로 인덱스, `llamaindex_store_local=False`) → 표·그림 빌더는 모두 그 task 디렉터리만 읽고, `FigRetrieveRefiner.run()` 은 원본대로 호출되지 않으며 KISTI 레코드는 `image` 가 없다. 인용 키는 논문 BibTeX 의 `bib_name` 이고 LLM 이 만든 키로 corpus 를 다시 조회하는 곳은 없다. `offline_proc(--ref_path)` 는 `full_run.py` 가 쓰지 않는다. 따라서 게이트는 필터 직후 한 곳이면 충분하고, 사후 `policy_check` 가 bib 풀 전편으로 이를 재확인한다.
 
-**분모**: `topics.kisti.jsonl` 의 `n_gt_refs_cutoff`(= `candidates/gap_to_80_refs.jsonl` 의 `tier == in_view`, view kisti-2608 기준). physical-adversarial 150 → **128**. 구 `n_gt_refs`(year ≤ 2025)는 정책 없는 과거 실행에만 쓰며 같은 표에 놓지 않는다.
+**분모**: `topics.kisti.jsonl` 의 `n_gt_refs_cutoff`(= `candidates/gap_to_80_refs.jsonl` 의 `tier == in_view`, view 는 topic 행의 `n_gt_refs_cutoff_view` — 현재 kisti-2608-r4). r4 부터 overlay 로 들어온 ref 는 `kisti_doi` 가 비어 `collect_run` 이 `view_id` 로 매칭 키를 만든다(`61f6495`). kisti-2608 기준이던 physical-adversarial 150 → 128 은 r4 에서 다시 바뀌었다. 구 `n_gt_refs`(year ≤ 2025)는 정책 없는 과거 실행에만 쓰며 같은 표에 놓지 않는다.
 
 **하지 않은 것(결정 대기)**: `config.DEFAULT_VIEW` 를 kisti-2608 로 바꾸지 않았다(runner 는 `KISTI_VIEW` 환경변수/`--view` 로 받고, 정책 view 가 kisti-2608 이 아니면 경고). 2026년 arXiv 초록 결손(2602~2606, 36,697편) 회수는 시도하지 않았다.
 
@@ -147,7 +147,7 @@ API 호출·파이프라인 실행 없이 mock 으로 위 동작을 고정한다
 ## 6. 예산·주의
 
 - 파일럿 실측 편당 **152분 · TM $1.43** → 25편 ≈ **63h · $36**(429 재시도 포함). OpenRouter 키 잔여 $2.57(09-08 08:08) — **키 한도 상향 없이는 배치 불가**.
-- 정책 적용 실행은 `KISTI_VIEW=kisti-2608` 로 시작한다(§1.1). 정책 기동(허용 집합 1.2M id 를 DuckDB 임시 테이블로) 약 17초/편. 첫 편에서 `run.json.policy_check.violations == 0`, `policy_gate.blocked == 0`, `score.denominator_matches_topics == true` 를 확인한다.
+- 정책 적용 실행은 `KISTI_VIEW=kisti-2608-r4` 로 한다(§1.1). r4 PoC 는 203분 · TM $1.46(429 256건으로 본문 생성이 느렸다). 허용 집합 지문은 adapter 가 `"\n".join` 규칙이라 AutoSurvey·SurveyForge(끝 개행 포함)와 값이 다르다 — 집합은 같다(PoC 기록 §3). 첫 편에서 `run.json.policy_check.violations == 0`, `policy_gate.blocked == 0`, `score.denominator_matches_topics == true` 를 확인한다.
 - **키 분리**: 실측 비용(`cost_measured_usd`)은 키 단위 차분이라 같은 키로 다른 agent가 동시에 돌면 오염된다(파일럿에서 SurveyForge와 겹쳐 $2.66 vs TM $1.43). agent별 키 또는 순차 실행.
 - **AttributeTree JSON 복구는 넣었다**(§3, 2026-09-08). 배치 첫 편에서 `run.json.attri.with_attri`가 파일럿의 41/196보다 확실히 올라가는지 확인한다.
 - 동시성은 `CHAT_AGENT_WORKERS=4` 유지. akashml 429(파일럿 59건)는 tenacity가 흡수한다.
@@ -173,6 +173,8 @@ API 호출·파이프라인 실행 없이 mock 으로 위 동작을 고정한다
 | 09-16 | 파이프라인 변경 2곳(provenance 기록·필터 직후 허용 집합 게이트) — fetcher 속성이 없으면 무동작이라 원 동작 그대로 | §1.1. 입구 감사 결과 검색 밖 id 생성 경로 없음, 게이트는 방어용 |
 | 09-16 | 09-08 파일럿은 **정책 없음(비교 대상 아님)** 으로 표기(`run.json.policy_comparable=false`). 분모 `n_gt_refs_cutoff`=128(구 149) | §1.1·§5. 새 규약 결과와 같은 표에 놓지 않는다 |
 | 09-16 | `config.DEFAULT_VIEW`·2026년 arXiv 초록 결손은 손대지 않음 | 결정 대기(AGENT-HANDOFF §0 5·6번) |
+| 09-30 | 작업 view 를 **kisti-2608-r4** 로 교체(`KISTI_VIEW` 만, SurveyX 코드 무변경). 채점 분모를 `view_id` 로도 읽게 `collect_run` 수정(190 ← 128) | AGENT-HANDOFF §0 r4 채택. r2 이전 결과와 같은 표 금지 |
+| 09-30 | r4 PoC 1편(llm-agent-optimization): 정책·게이트·누수 모두 정상, recall 0/190 은 SurveyX 검색어 확장 동작으로 기록(코드 무변경) | experiments/kisti-2608-r4-poc-llm-agent-optimization.md |
 
 ## 8. 관련 문서
 

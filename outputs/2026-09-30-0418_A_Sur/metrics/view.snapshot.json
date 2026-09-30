@@ -1,0 +1,12 @@
+{
+  "view": "kisti-2608-r4",
+  "view_dir": "/data2/chanjoong/kisti_data/data/views/kisti-2608-r4",
+  "manifest_sha256": "6517834e85646ad8d1d516be702917823691cddf4ca38e2abc2f8f809f4262dd",
+  "papers_parquet_sha256": "32a77a486c2c750182fb48a44c6bb5c04e46af15e7eae3407465ea1e418816cc",
+  "version": "32a77a48",
+  "version_label": "32a77a48 / 2026-09-30T02:05:49Z",
+  "view_papers": 1697512,
+  "manifest_created_at": "2026-09-30T02:05:49+00:00",
+  "exclude_keys": 43,
+  "captured_at": "2026-09-30 04:16:44"
+}
