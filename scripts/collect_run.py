@@ -349,8 +349,15 @@ def gt_in_view_keys(slug: str) -> list[str]:
         if not l.strip():
             continue
         r = json.loads(l)
-        if r.get("slug") == slug and r.get("tier") == "in_view" and r.get("kisti_doi"):
+        if r.get("slug") != slug or r.get("tier") != "in_view":
+            continue
+        # r4 부터 overlay 로 들어온 ref 는 kisti_doi 가 비고 view_id(arXiv base id ∨ 소문자 DOI)만 있다
+        # (llm-agent-optimization 190 중 62) → view_id 로 같은 매칭 키를 만든다
+        if r.get("kisti_doi"):
             keys.append(r["kisti_doi"].lower())
+        elif r.get("view_id"):
+            vid = r["view_id"].lower()
+            keys.append(vid if "/" in vid else ARXIV_DOI_PREFIX + vid)
     return sorted(set(keys))
 
 

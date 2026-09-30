@@ -17,12 +17,12 @@ topic 정책 (2026-09-14 규약, kisti_data/docs/asg/AGENT-HANDOFF.md §0): refe
 정책 파일(AutoSurvey/data/topic_policy.<view>.jsonl)·sidecar(paper_dates.json)·topic 행이 없으면 실행 전에 멈춘다.
 topics.kisti.jsonl 밖의 --title 은 slug 가 없어 정책을 걸 수 없다 → --no-policy 를 명시해야 돈다(비교 대상 아님).
 
-사용 (반드시 surveyx env 의 python; view 는 KISTI_VIEW 환경변수 또는 --view, 새 규약은 kisti-2608):
+사용 (반드시 surveyx env 의 python; view 는 KISTI_VIEW 환경변수 또는 --view, 새 규약은 kisti-2608-r4):
   PY=/data2/chanjoong/miniforge3/envs/surveyx/bin/python
-  KISTI_VIEW=kisti-2608 $PY scripts/run_kisti.py --slug instruction-tuning-llms      # topics.kisti.jsonl 의 slug
-  $PY scripts/run_kisti.py --view kisti-2608 --title "Instruction Tuning for Large Language Models"
-  KISTI_VIEW=kisti-2608 $PY scripts/run_kisti.py --all [--skip-done] [--limit N] [--dry-run]
-  nohup env KISTI_VIEW=kisti-2608 $PY scripts/run_kisti.py --all --skip-done > outputs/kisti_batch.log 2>&1 &
+  KISTI_VIEW=kisti-2608-r4 $PY scripts/run_kisti.py --slug instruction-tuning-llms      # topics.kisti.jsonl 의 slug
+  $PY scripts/run_kisti.py --view kisti-2608-r4 --title "Instruction Tuning for Large Language Models"
+  KISTI_VIEW=kisti-2608-r4 $PY scripts/run_kisti.py --all [--skip-done] [--limit N] [--dry-run]
+  nohup env KISTI_VIEW=kisti-2608-r4 $PY scripts/run_kisti.py --all --skip-done > outputs/kisti_batch.log 2>&1 &
 
 topic 문자열은 topics.kisti.jsonl 의 title 을 그대로 --title 과 --key_words 양쪽에 준다
 (--key_words 를 비우면 핵심어가 유실된다 — kisti_data/docs/asg/surveyx.md §2).
@@ -57,7 +57,7 @@ PROFILE_KEYS = ("SURVEYX_TEMPERATURE", "SURVEYX_MAX_TOKENS", "OPENROUTER_PROVIDE
 # 실행 환경변수가 .env 를 덮는 키 (config.py 의 load_dotenv 는 기존 환경변수를 덮지 않으므로 자식 프로세스에서도 이 값이 이긴다)
 KISTI_ENV_KEYS = ("KISTI_VIEW", "KISTI_TOPIC_ID", "KISTI_TOPIC_POLICY", "KISTI_ADAPTER_DIR", "KISTI_FULLTEXT_LIMIT")
 DEFAULT_VIEW = "kisti-2512"          # config.DEFAULT_VIEW 와 같음 — 전환은 결정 대기(AGENT-HANDOFF §0 6번)
-POLICY_VIEW = "kisti-2608"           # 채점 분모 n_gt_refs_cutoff 가 정의된 view
+POLICY_VIEW = "kisti-2608-r4"        # 채점 분모 n_gt_refs_cutoff 가 정의된 view (2026-09-30 r4 채택; topic 행의 n_gt_refs_cutoff_view 가 우선)
 
 
 def slugify(title: str) -> str:
@@ -129,9 +129,11 @@ def check_policy(view: str, slug: str, env: dict) -> dict:
     sidecar = KISTI_ROOT / "data" / "views" / view / "paper_dates.json"
     if not sidecar.exists():
         sys.exit(f"sidecar 없음: {sidecar} — adapter/common/paper_dates.py --view {view}")
-    if view != POLICY_VIEW:
-        log(f"WARN view={view} — 채점 분모 n_gt_refs_cutoff 는 {POLICY_VIEW} 기준이다 (AGENT-HANDOFF §0). "
-            f"새 규약 실행은 KISTI_VIEW={POLICY_VIEW} 로")
+    topic = next((t for t in load_topics() if t.get("slug") == slug), {})
+    score_view = (topic.get("n_gt_refs_cutoff_view") or POLICY_VIEW).split()[0]
+    if view != score_view:
+        log(f"WARN view={view} — 채점 분모 n_gt_refs_cutoff 는 {score_view} 기준이다 (AGENT-HANDOFF §0). "
+            f"새 규약 실행은 KISTI_VIEW={score_view} 로")
     return {"topic_id": slug, "retrieval_cutoff_at": row.get("retrieval_cutoff_at"),
             "exclude_ids": row.get("exclude_ids") or [], "policy_file": str(path),
             "corpus_snapshot_id": row.get("corpus_snapshot_id"), "sidecar": str(sidecar)}
