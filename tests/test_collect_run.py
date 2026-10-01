@@ -199,6 +199,21 @@ class CollectRunTest(unittest.TestCase):
         self.assertAlmostEqual(sc["recall"], 2 / 3, places=4)
         self.assertAlmostEqual(sc["precision"], 2 / 3, places=4)
 
+    def test_recall_with_post_secondary_metric(self):
+        # 보조 지표 (2026-09-30): post(GT 공개일 이후 인용) 중 view 안인 것만 분모에 더한다. view_id 없는 post 는 빠진다.
+        rows = [
+            {"slug": SLUG, "tier": "in_view", "kisti_doi": "10.48550/arxiv.1712.09665"},   # k1 적중
+            {"slug": SLUG, "tier": "in_view", "kisti_doi": "10.1000/not-cited"},
+            {"slug": SLUG, "tier": "post", "kisti_doi": None, "view_id": "2504.00001"},
+            {"slug": SLUG, "tier": "post", "kisti_doi": "10.1000/post-not-in-view", "view_id": None},
+        ]
+        (self.kisti / "candidates" / "gap_to_80_refs.jsonl").write_text(
+            "\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8")
+        self.assertEqual(collect_run.gt_in_view_keys(SLUG, "post"), ["10.48550/arxiv.2504.00001"])
+        sc = collect_run.build(self.task_id)["score"]
+        self.assertEqual(sc["hits_post"], 0)
+        self.assertAlmostEqual(sc["recall_with_post"], sc["hits"] / 3, places=4)
+
     def test_in_view_without_kisti_doi_uses_view_id(self):
         # r4: overlay 로 들어온 GT ref 는 kisti_doi 가 비고 view_id(arXiv base id ∨ 소문자 DOI)만 있다
         rows = [

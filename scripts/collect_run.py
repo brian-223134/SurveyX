@@ -340,7 +340,9 @@ def find_topic(title: str) -> dict | None:
     return None
 
 
-def gt_in_view_keys(slug: str) -> list[str]:
+def gt_in_view_keys(slug: str, tier: str = "in_view") -> list[str]:
+    """gap_to_80_refs.jsonl 의 그 slug·tier 행 → 매칭 키. tier='post' 는 보조 지표용(GT 공개일 이후 인용 ∧ view 안 —
+    kisti_data selection.py 의 n_gt_refs_post 와 같은 집합, view_id 가 있는 행만)."""
     p = KISTI_ROOT / "candidates" / "gap_to_80_refs.jsonl"
     if not p.exists():
         return []
@@ -349,7 +351,7 @@ def gt_in_view_keys(slug: str) -> list[str]:
         if not l.strip():
             continue
         r = json.loads(l)
-        if r.get("slug") != slug or r.get("tier") != "in_view":
+        if r.get("slug") != slug or r.get("tier") != tier or (tier == "post" and not r.get("view_id")):
             continue
         # r4 부터 overlay 로 들어온 ref 는 kisti_doi 가 비고 view_id(arXiv base id ∨ 소문자 DOI)만 있다
         # (llm-agent-optimization 190 중 62) → view_id 로 같은 매칭 키를 만든다
@@ -553,12 +555,15 @@ def build(task_id: str, request_stats: Path | None = None) -> dict:
         in_view = gt_in_view_keys(topic["slug"])
         ref_match = sorted({e["match_key"] for e in refs if e["match_key"]})
         hits = sorted(set(ref_match) & set(in_view))
+        post = gt_in_view_keys(topic["slug"], "post")
+        hits_post = sorted(set(ref_match) & set(post))
         gt = {"domain": topic["domain"], "slug": topic["slug"], "gt_doi": topic.get("gt_doi"),
               "gt_title": gt_title_str, "n_gt_refs_eligible": topic.get("n_gt_refs"),
               "retrieval_cutoff_at": topic.get("retrieval_cutoff_at"),          # GT 최초 공개일 (2026-09-14 규약)
               "n_gt_refs_cutoff": topic.get("n_gt_refs_cutoff"),                # 채점 분모 (topics.kisti.jsonl)
               "n_gt_refs_cutoff_view": topic.get("n_gt_refs_cutoff_view"),
-              "n_gt_refs_in_view": len(in_view)}
+              "n_gt_refs_in_view": len(in_view),
+              "n_gt_refs_post": topic.get("n_gt_refs_post"), "n_gt_refs_post_in_gap": len(post)}
         n_cut = topic.get("n_gt_refs_cutoff")
         score = {
             "denominator": "n_gt_refs_cutoff = GT refs ∩ view ∧ upper_bound(date) < retrieval_cutoff_at "
@@ -569,6 +574,11 @@ def build(task_id: str, request_stats: Path | None = None) -> dict:
             "recall": round(len(hits) / len(in_view), 4) if in_view else None,
             "precision": round(len(hits) / len(ref_match), 4) if ref_match else None,
             "hit_keys": hits,
+            # 보조 지표 (2026-09-30 교수님 결정): GT 공개일 이후 인용 ref(view 안)도 분모에 넣는다. 검색 정책이 막으므로
+            # hits_post 는 정상이면 0 이고, 이 값은 항상 recall 이하다 — 실제 인용 목록 대비 위치를 보여 준다.
+            "hits_post": len(hits_post),
+            "recall_with_post": (round((len(hits) + len(hits_post)) / (len(in_view) + len(post)), 4)
+                                 if (in_view or post) else None),
         }
     # ---- view 정체성: 실행 시작 시점 스냅샷 우선. 없으면 현재 디렉터리로 재고 출처를 표시한다.
     vsnap = read_json(metrics / "view.snapshot.json")
