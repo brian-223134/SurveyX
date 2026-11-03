@@ -364,6 +364,21 @@ def gt_in_view_keys(slug: str, tier: str = "in_view") -> list[str]:
     return sorted(set(keys))
 
 
+def gt_alt_keys(slug: str) -> dict[str, str]:
+    """같은 S2 논문의 다른 판 → 그 ref 의 매칭 키 (csur2026_gt_refs.jsonl 의 alt_view_ids). 어느 판을 인용해도 그 ref 한 편의 hit 다."""
+    p = Path(os.environ.get("KISTI_GT_REFS_FILE") or KISTI_ROOT / "candidates" / "gap_to_80_refs.jsonl")
+    if not p.exists():
+        return {}
+    key = lambda vid: vid.lower() if "/" in vid else ARXIV_DOI_PREFIX + vid.lower()  # noqa: E731
+    out = {}
+    for l in p.read_text(encoding="utf-8").splitlines():
+        r = json.loads(l) if l.strip() else {}
+        if r.get("slug") == slug and r.get("view_id"):
+            main = (r.get("kisti_doi") or key(r["view_id"])).lower()
+            out.update({key(a): main for a in r.get("alt_view_ids") or []})
+    return out
+
+
 def gt_title(domain: str, slug: str) -> str | None:
     r = read_json(KISTI_ROOT / "candidates" / domain / slug / "refs.json")
     try:
@@ -554,7 +569,8 @@ def build(task_id: str, request_stats: Path | None = None) -> dict:
     if topic:
         gt_title_str = gt_title(topic["domain"], topic["slug"])
         in_view = gt_in_view_keys(topic["slug"])
-        ref_match = sorted({e["match_key"] for e in refs if e["match_key"]})
+        alt = gt_alt_keys(topic["slug"])
+        ref_match = sorted({alt.get(e["match_key"], e["match_key"]) for e in refs if e["match_key"]})
         hits = sorted(set(ref_match) & set(in_view))
         post = gt_in_view_keys(topic["slug"], "post")
         hits_post = sorted(set(ref_match) & set(post))
