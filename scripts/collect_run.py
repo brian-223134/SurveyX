@@ -326,7 +326,8 @@ def pdf_pages(pdf: Path) -> int | None:
 
 # --------------------------------------------------------------------------- GT / leak
 def load_topics() -> list[dict]:
-    p = KISTI_ROOT / "data" / "topics.kisti.jsonl"
+    # 파일럿처럼 다른 분모로 채점할 때 경로를 바꾼다 (kisti_data candidates/csur2026_topics.jsonl · csur2026_gt_refs.jsonl)
+    p = Path(os.environ.get("KISTI_TOPICS_FILE") or KISTI_ROOT / "data" / "topics.kisti.jsonl")
     if not p.exists():
         return []
     return [json.loads(l) for l in p.read_text(encoding="utf-8").splitlines() if l.strip()]
@@ -343,7 +344,7 @@ def find_topic(title: str) -> dict | None:
 def gt_in_view_keys(slug: str, tier: str = "in_view") -> list[str]:
     """gap_to_80_refs.jsonl 의 그 slug·tier 행 → 매칭 키. tier='post' 는 보조 지표용(GT 공개일 이후 인용 ∧ view 안 —
     kisti_data selection.py 의 n_gt_refs_post 와 같은 집합, view_id 가 있는 행만)."""
-    p = KISTI_ROOT / "candidates" / "gap_to_80_refs.jsonl"
+    p = Path(os.environ.get("KISTI_GT_REFS_FILE") or KISTI_ROOT / "candidates" / "gap_to_80_refs.jsonl")
     if not p.exists():
         return []
     keys = []
