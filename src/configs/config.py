@@ -59,6 +59,10 @@ CHAT_RETRY_TRUNCATED = (
     == "true"
 )
 CHAT_MAX_TRUNCATED_RETRY = _env_int("SURVEYX_MAX_TRUNCATED_RETRY") or 10
+# 본문 작성의 contains_markdown 재요청 루프 상한. 비우면(또는 0) 원 SurveyX 동작 = 상한 없음.
+# 같은 프롬프트를 그대로 다시 보내므로 백본이 `*강조*` 를 일관되게 쓰면 끝나지 않는다(2026-11-11 r7 qwen-plus 205회).
+# 상한에 닿으면 마지막 응답을 그대로 채택하고 WARNING `markdown retry cap` 을 남긴다(잘림 소진 시 채택과 같은 처리).
+CONTENT_MARKDOWN_RETRY_MAX = _env_int("SURVEYX_MARKDOWN_RETRY_MAX") or 0
 
 # LaTeX 컴파일에 사용할 TeX 배포판 bin 디렉터리 (예: /usr/bin).
 # 비우면 PATH 순서를 따른다 — 이 서버는 PATH 앞의 MiKTeX가 패키지 불완전이라 지정 필요.

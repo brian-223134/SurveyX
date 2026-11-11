@@ -75,7 +75,7 @@ SURVEYX_MAX_TRUNCATED_RETRY=10
 | max_tokens **8192** | payload `max_tokens` (`config.CHAT_MAX_TOKENS`) | "원래 없었다"는 정확하지 않다 — 원 SurveyX의 gpt-4o(-mini)는 OpenAI API가 모델 상한 16,384에서 잘랐고, llama@OpenRouter로 오면서 그 암묵 상한이 사라졌다(AutoSurvey에서 128K 토큰 호출 실측). 8192는 그 상한의 복원이며 §2대로 정상 출력에는 영향 0. 없이 가면 HTTP 타임아웃 900초가 대신 가드 노릇을 하는데, 15분 안에 끝나는 1~2만 토큰 루프는 그대로 본문에 들어가고 타임아웃 호출의 비용도 그대로 나간다 |
 | 잘림 재요청 최대 10회 | `finish_reason == "length"`면 버리고 재요청, 소진 시 마지막 응답 채택 (`CHAT_RETRY_TRUNCATED`, `CHAT_MAX_TRUNCATED_RETRY`) | 프로토콜 통일(AutoSurvey `baa46cc`와 같은 규칙). §2대로 SurveyX에서 발동 확률은 낮고 정상 호출엔 영향 0. 폐기한 응답의 토큰도 TokenMonitor에 더한다(과금되므로) |
 | AttributeTree JSON 복구 | `DataCleaner.__process_attri_response`가 `json.loads` 실패 시 `repair_json_text()`(`src/modules/utils.py`)를 거친 뒤에만 재요청 | 파일럿에서 속성 트리 실패의 사실상 전부가 **프롬프트 예시 자체의 형식 오류**였다: `attri_tree_for_*.md`의 출력 예시가 `"other info": [ "info1": "", … ]`(배열 안에 키-값)이고 llama는 이를 그대로 따른다(표본 12건 중 10건, 전부 이 자리에서 `Expecting ',' delimiter`). 복구는 `[ "키":` 로 시작하는 괄호 쌍을 객체로 바꾸고 후행 쉼표를 제거하는 결정적 규칙 두 개뿐이며, 유효한 JSON은 건드리지 않는다. 표본 10/10 복구. 프롬프트 원문은 유지(2026-09-08 결정). `run.json.attri`에 커버리지·복구 수 기록 |
-| `contains_markdown` 루프 | **손대지 않음** (`content_generator.py:192`, `:370`, 상한 없음) | temperature 0.6에서 매 시도가 독립 표본이라 20회 연속 거부 확률 ≈ 0.1% 미만. 상한을 두면 그 극소수 소절에서 markdown이 LaTeX로 흘러가 `#` 때문에 컴파일이 깨질 수 있어 손해. 시도 횟수는 요청 기록으로 사후 집계(§5 `draft_calls_per_subsection`) |
+| `contains_markdown` 루프 | 기본은 **손대지 않음**(상한 없음). `SURVEYX_MARKDOWN_RETRY_MAX=N` 이면 N회 호출 후 마지막 응답 채택 + WARNING `markdown retry cap` (`ContentGenerator.chat_until_no_markdown`, 2026-11-11) | llama@temperature 0.6에서는 매 시도가 사실상 독립 표본이라 소절당 4.1회로 끝났다(09-08). **qwen-plus(r7)는 같은 프롬프트에 거의 같은 응답을 내며 `i.e., *L…*` 식 이탤릭을 일관되게 써서 205회 연속 거부(08:59–10:04, 소절 1.2)** — 상한 없이는 끝나지 않는다. 상한에 걸린 소절은 `*`·`#` 이 LaTeX로 흘러갈 수 있으니 건수를 결과 표에 적는다. 시도 횟수는 요청 기록으로 사후 집계(§5 `draft_calls_per_subsection`) |
 | top_p 등 | 건드리지 않음 | 손잡이 1개 |
 
 요청 기록(`outputs/tmp/request_stats.txt`, `ChatAgent.update_record`)의 status: **1** 정상 · **0** HTTP 오류(재시도됨) · **2** 잘림 폐기 · **3** 잘림 채택(재요청 소진). 파일이 새로 만들어질 때 첫 기록이 두 번 적히던 원 코드 버그는 고쳤다(편마다 파일을 회전시키므로 첫 요청이 항상 2회로 세어지는 문제였다).
@@ -183,6 +183,7 @@ API 호출·파이프라인 실행 없이 mock 으로 위 동작을 고정한다
 | 09-30 | 작업 view 를 **kisti-2608-r4** 로 교체(`KISTI_VIEW` 만, SurveyX 코드 무변경). 채점 분모를 `view_id` 로도 읽게 `collect_run` 수정(190 ← 128) | AGENT-HANDOFF §0 r4 채택. r2 이전 결과와 같은 표 금지 |
 | 09-30 | r4 PoC 1편(llm-agent-optimization): 정책·게이트·누수 모두 정상, recall 0/190 은 SurveyX 검색어 확장 동작으로 기록(코드 무변경) | experiments/kisti-2608-r4-poc-llm-agent-optimization.md |
 | 11-11 | r7 파일럿(CSUR 2026 게재 GT 17 topic, pilot 4) 셋업: runner 가 `KISTI_TOPICS_FILE` 을 읽게, 비-OpenRouter 백본이면 크레딧 조회 생략, `LLM.yaml` 에 qwen-plus-2025-12-01 단가. 백본은 `.env` 만 DashScope intl qwen-plus 로 임시 교체(파이프라인 코드 무변경) | §4. kisti_data `57c2ab8`·AutoSurvey r6 과 같은 백본 |
+| 11-11 | r7 llm-watermarking 에서 content 단계 `contains_markdown` 무한 루프(qwen-plus, 205회) → env 게이트 `SURVEYX_MARKDOWN_RETRY_MAX`(미설정 = 원 동작) 추가, 같은 task_id 로 04→06 재실행(상한 10). 1부 지표는 `metrics/part1/` | §3 |
 
 ## 8. 관련 문서
 

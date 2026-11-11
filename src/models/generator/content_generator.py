@@ -16,7 +16,12 @@ FILE_PATH = Path(__file__).absolute()
 BASE_DIR = FILE_PATH.parent.parent.parent.parent
 sys.path.insert(0, str(BASE_DIR))  # 어느 경로에서 실행해도 동작하도록 설정
 
-from src.configs.config import ADVANCED_CHATAGENT_MODEL, BASE_DIR, CHAT_AGENT_WORKERS
+from src.configs.config import (
+    ADVANCED_CHATAGENT_MODEL,
+    BASE_DIR,
+    CHAT_AGENT_WORKERS,
+    CONTENT_MARKDOWN_RETRY_MAX,
+)
 from src.configs.constants import OUTPUT_DIR
 from src.configs.logger import get_logger
 from src.models.LLM import ChatAgent
@@ -168,6 +173,22 @@ class ContentGenerator(Base):
         ]
         return any(re.search(pattern, text) for pattern in markdown_patterns)
 
+    def chat_until_no_markdown(self, chat: ChatAgent, prmpt: str, where: str) -> str:
+        """markdown 이 없을 때까지 같은 프롬프트로 재요청 (원 SurveyX 루프).
+        SURVEYX_MARKDOWN_RETRY_MAX 가 비어 있으면 상한 없음 = 원 동작. 있으면 그 횟수 호출 후 마지막 응답 채택."""
+        res = "**"
+        calls = 0
+        while self.contains_markdown(res) == True:
+            if CONTENT_MARKDOWN_RETRY_MAX and calls >= CONTENT_MARKDOWN_RETRY_MAX:
+                logger.warning(
+                    f"markdown retry cap: {calls} calls still contain markdown, adopting last response ({where})"
+                )
+                break
+            res = chat.remote_chat(prmpt, model=ADVANCED_CHATAGENT_MODEL)
+            res = clean_chat_agent_format(content=res)
+            calls += 1
+        return res
+
     def write_content_iteratively(
         self,
         papers: list[dict],
@@ -178,7 +199,6 @@ class ContentGenerator(Base):
         subsection_desc: str,
         chat: ChatAgent,
     ) -> str:
-        res = "**"
         prmpt = load_prompt(
             f"{BASE_DIR}/resources/LLM/prompts/content_generator/fulfill_content_iteratively.md",
             topic=self.topic,
@@ -189,9 +209,7 @@ class ContentGenerator(Base):
             section_desc=subsection_desc,
             last_written=last_written,
         )
-        while self.contains_markdown(res) == True:
-            res = chat.remote_chat(prmpt, model=ADVANCED_CHATAGENT_MODEL)
-            res = clean_chat_agent_format(content=res)
+        res = self.chat_until_no_markdown(chat, prmpt, where=subsection_title)
         res = res.replace("\\subsection{Conclusion}", "")
         return res
 
@@ -357,7 +375,6 @@ class ContentGenerator(Base):
                 else:
                     papers = sec2info[out2_title]
 
-                res = "**"
                 prmpt = load_prompt(
                     f"{BASE_DIR}/resources/LLM/prompts/content_generator/fulfill_content.md",
                     topic=self.topic,
@@ -367,9 +384,7 @@ class ContentGenerator(Base):
                     section_title=subsection.title,
                     section_desc=subsection.desc,
                 )
-                while self.contains_markdown(res) == True:
-                    res = chat.remote_chat(prmpt, model=ADVANCED_CHATAGENT_MODEL)
-                    res = clean_chat_agent_format(content=res)
+                res = self.chat_until_no_markdown(chat, prmpt, where=subsection.title)
                 res = res.replace("\\subsection{Conclusion}", "")
                 mainbody.append(res)
                 written_content = "\n\n".join(mainbody)
