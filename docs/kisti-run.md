@@ -95,7 +95,14 @@ $PY scripts/run_kisti.py --slug instruction-tuning-llms            # 1편 — KI
 $PY scripts/run_kisti.py --title "<Topic>"                          # topics.kisti.jsonl 의 title 이면 slug 자동, 밖이면 --no-policy 필요
 nohup $PY scripts/run_kisti.py --all --skip-done > outputs/kisti_batch.log 2>&1 &   # 25편
 $PY scripts/run_kisti.py --all --dry-run                            # 명령·정책 사전 점검만
+
+# kisti-2608-r7 파일럿 (CSUR 2026 게재 GT, 2026-11-11): topic·분모 파일을 바꾼다. --all 은 쓰지 않는다(25 topic 벤치마크)
+K=/data2/chanjoong/kisti_data
+KISTI_VIEW=kisti-2608-r7 KISTI_GT_REFS_FILE=$K/candidates/csur2026_gt_refs.jsonl \
+  KISTI_TOPICS_FILE=$K/candidates/csur2026_topics.jsonl $PY scripts/run_kisti.py --slug <slug> [--dry-run]
 ```
+
+`KISTI_TOPICS_FILE` 은 runner(`--slug` → `--title` 로 넘길 게재본 전체 제목)와 `collect_run`(제목 매칭·분모)이 **둘 다** 읽는다 — 한쪽만 바뀌면 짧은 제목으로 돌거나 채점이 null 이 된다. 두 파일 경로는 `env.snapshot.json`·`run_args.json.env_overrides` 에 남는다. 백본이 OpenRouter 가 아니면(`SURVEYX_REMOTE_URL` 호스트 기준) 3번의 크레딧 조회를 건너뛴다 — `check_credits.py` 가 `OPENROUTER_API_KEY` 를 openrouter.ai 로 보내기 때문. 그때 비용은 `token_monitor` × `src/configs/LLM.yaml` 단가(qwen-plus-2025-12-01 in $0.4 / out $1.2 per 1M)뿐이다.
 
 1. 전제 확인: `.env`의 `SURVEYX_DATA_SOURCE=kisti`, view 디렉터리, 디코딩 프로파일 3키(없으면 경고만), **topic 정책**(정책 파일·`status: ok` 행·sidecar — 없으면 실행 전에 종료).
 2. `outputs/tmp/request_stats.txt`(전역 누적)를 `.bak`으로 회전 → 이번 편의 기록만 남게 한다.
@@ -175,6 +182,7 @@ API 호출·파이프라인 실행 없이 mock 으로 위 동작을 고정한다
 | 09-16 | `config.DEFAULT_VIEW`·2026년 arXiv 초록 결손은 손대지 않음 | 결정 대기(AGENT-HANDOFF §0 5·6번) |
 | 09-30 | 작업 view 를 **kisti-2608-r4** 로 교체(`KISTI_VIEW` 만, SurveyX 코드 무변경). 채점 분모를 `view_id` 로도 읽게 `collect_run` 수정(190 ← 128) | AGENT-HANDOFF §0 r4 채택. r2 이전 결과와 같은 표 금지 |
 | 09-30 | r4 PoC 1편(llm-agent-optimization): 정책·게이트·누수 모두 정상, recall 0/190 은 SurveyX 검색어 확장 동작으로 기록(코드 무변경) | experiments/kisti-2608-r4-poc-llm-agent-optimization.md |
+| 11-11 | r7 파일럿(CSUR 2026 게재 GT 17 topic, pilot 4) 셋업: runner 가 `KISTI_TOPICS_FILE` 을 읽게, 비-OpenRouter 백본이면 크레딧 조회 생략, `LLM.yaml` 에 qwen-plus-2025-12-01 단가. 백본은 `.env` 만 DashScope intl qwen-plus 로 임시 교체(파이프라인 코드 무변경) | §4. kisti_data `57c2ab8`·AutoSurvey r6 과 같은 백본 |
 
 ## 8. 관련 문서
 
