@@ -1,0 +1,53 @@
+{
+    "retrieve paper": {
+        "start": "2026-11-11 07:36:55",
+        "end": "2026-11-11 07:53:40",
+        "duration": 1005.2
+    },
+    "fetch fulltext": {
+        "start": "2026-11-11 07:54:50",
+        "end": "2026-11-11 07:54:51",
+        "duration": 1.56
+    },
+    "filter paper": {
+        "start": "2026-11-11 07:53:40",
+        "end": "2026-11-11 07:54:51",
+        "duration": 71.59
+    },
+    "clean paper": {
+        "start": "2026-11-11 07:54:51",
+        "end": "2026-11-11 08:02:19",
+        "duration": 448.06
+    },
+    "generate outline": {
+        "start": "2026-11-11 08:02:19",
+        "end": "2026-11-11 08:38:33",
+        "duration": 2174.37
+    },
+    "generate content": {
+        "start": "2026-11-11 10:06:10",
+        "end": "2026-11-11 11:44:16",
+        "duration": 5886.78
+    },
+    "generate tabel": {
+        "start": "2026-11-11 12:46:47",
+        "end": "2026-11-11 12:50:27",
+        "duration": 220.22
+    },
+    "post refine": {
+        "start": "2026-11-11 11:44:36",
+        "end": "2026-11-11 12:50:27",
+        "duration": 3951.22
+    },
+    "compile latex": {
+        "start": "2026-11-11 12:50:34",
+        "end": "2026-11-11 12:50:47",
+        "duration": 13.2
+    },
+    "generate content (aborted part1)": {
+        "start": "2026-11-11 08:38:33",
+        "end": "2026-11-11 10:04:11",
+        "duration": 5138.0,
+        "note": "contains_markdown \ubb34\ud55c \ub8e8\ud504(\uc18c\uc808 1.2, 205\ud68c)\ub85c SIGTERM. 04_gen_content \ubd80\ud130 \uc7ac\uc2e4\ud589"
+    }
+}

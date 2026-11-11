@@ -1,0 +1,65 @@
+{
+    "recall paper": {
+        "qwen-plus-2025-12-01": {
+            "input_tokens": 68133,
+            "output_tokens": 107,
+            "total_cost": 0.0273816
+        }
+    },
+    "filter paper": {
+        "qwen-plus-2025-12-01": {
+            "input_tokens": 95507,
+            "output_tokens": 763,
+            "total_cost": 0.0391184
+        }
+    },
+    "clean paper": {
+        "qwen-plus-2025-12-01": {
+            "input_tokens": 488728,
+            "output_tokens": 74827,
+            "total_cost": 0.2852836
+        }
+    },
+    "generate outline": {
+        "qwen-plus-2025-12-01": {
+            "input_tokens": 244928,
+            "output_tokens": 41280,
+            "total_cost": 0.1475072
+        }
+    },
+    "generate content": {
+        "qwen-plus-2025-12-01": {
+            "input_tokens": 3869281,
+            "output_tokens": 333948,
+            "total_cost": 1.94845
+        }
+    },
+    "section rewrite": {
+        "qwen-plus-2025-12-01": {
+            "input_tokens": 406019,
+            "output_tokens": 155575,
+            "total_cost": 0.3490976
+        }
+    },
+    "Template figure builder": {
+        "qwen-plus-2025-12-01": {
+            "input_tokens": 1853875,
+            "output_tokens": 40805,
+            "total_cost": 0.790516
+        }
+    },
+    "generate table": {
+        "qwen-plus-2025-12-01": {
+            "input_tokens": 315194,
+            "output_tokens": 15921,
+            "total_cost": 0.1451828
+        }
+    },
+    "generate content (aborted part1)": {
+        "qwen-plus-2025-12-01": {
+            "input_tokens": 1263778,
+            "output_tokens": 185822,
+            "total_cost": 0.7284976
+        }
+    }
+}

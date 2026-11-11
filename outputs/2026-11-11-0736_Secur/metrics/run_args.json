@@ -1,0 +1,45 @@
+{
+  "args": "--title \"Securing Large Language Models: A Survey of Watermarking and Fingerprinting Techniques\" --key_words \"Securing Large Language Models: A Survey of Watermarking and Fingerprinting Techniques\"",
+  "status": "ok",
+  "returncode": 0,
+  "view": "kisti-2608-r7",
+  "topic_id": "llm-watermarking",
+  "policy": {
+    "topic_id": "llm-watermarking",
+    "retrieval_cutoff_at": "2026-02-04",
+    "exclude_ids": [
+      "10.1145/3773028"
+    ],
+    "policy_file": "/data2/chanjoong/survey-agent/AutoSurvey/data/topic_policy.kisti-2608-r7.jsonl",
+    "corpus_snapshot_id": "kisti-2608-r7 papers.parquet sha256:934adb114594a20b543bc9c30f941df506f1954ea64a3b67e24cbb00d279bd7f",
+    "sidecar": "/data2/chanjoong/kisti_data/data/views/kisti-2608-r7/paper_dates.json"
+  },
+  "env_overrides": {
+    "KISTI_VIEW": "kisti-2608-r7",
+    "KISTI_TOPIC_ID": "llm-watermarking",
+    "KISTI_TOPICS_FILE": "/data2/chanjoong/kisti_data/candidates/csur2026_topics.jsonl",
+    "KISTI_GT_REFS_FILE": "/data2/chanjoong/kisti_data/candidates/csur2026_gt_refs.jsonl",
+    "SURVEYX_MARKDOWN_RETRY_MAX": "10 (resumed part only)"
+  },
+  "started_at": "2026-11-11 07:34:21",
+  "ended_at": "2026-11-11 12:50:48",
+  "log_path": "outputs/logs/kisti_llm-watermarking_20261111-073421.log",
+  "python": "/data2/chanjoong/miniforge3/envs/surveyx/bin/python",
+  "part1": {
+    "status": "failed",
+    "returncode": -15,
+    "ended_at": "2026-11-11 10:04:11",
+    "reason": "contains_markdown 무한 루프로 수동 SIGTERM (10:04:11)"
+  },
+  "resumed": {
+    "from_stage": "tasks/workflow/04_gen_content.py → 05_post_refine.py → 06_gen_latex.py",
+    "started_at": "2026-11-11 10:06:04",
+    "ended_at": "2026-11-11 12:50:48",
+    "env": {
+      "SURVEYX_MARKDOWN_RETRY_MAX": "10",
+      "CUDA_VISIBLE_DEVICES": "3"
+    },
+    "code_commit": "d2a2709",
+    "log_path": "outputs/logs/kisti_llm-watermarking_20261111-073421.resume.log"
+  }
+}
