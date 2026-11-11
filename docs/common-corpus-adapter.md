@@ -109,8 +109,9 @@ REPRODUCTION.md §3.1에서 식별한 지연 파싱 차단 지점 2곳:
 ## 7. 한계와 후속 작업
 
 - **authors 없음** — 코퍼스 parquet에 authors 컬럼이 없다. 필요 시
-  `ARXIV_SNAPSHOT_DUCKDB`(survey-search의 로컬 arXiv 스냅샷, base_id 조인,
-  커버리지 ~65%)로 보강. 현재 파이프라인은 authors 없이 동작한다.
+  `ARXIV_SNAPSHOT_DUCKDB`(로컬 arXiv 스냅샷, base_id 조인, 커버리지 ~65%)로 보강.
+  원본 survey-search 는 2026-09-28 삭제돼 `kisti_data/data/upstream/arxiv-2608/papers.duckdb`
+  (같은 스키마 재구축본)를 가리킨다. 현재 파이프라인은 authors 없이 동작한다.
 - **reference(BibTeX) 없음** — 코퍼스 파서가 bibliography를 제거한다.
   `complete_bib()`가 제목 기반 `@article{...}`을 자동 생성하므로 파이프라인은
   돌지만, 인용 품질 평가 신뢰도를 위해 arXiv 메타데이터 기반 BibTeX 생성을
