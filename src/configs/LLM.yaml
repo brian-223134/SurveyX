@@ -9,6 +9,11 @@ gpt-4o-mini:
     input: 0.15
     output: 0.6
 
+# Alibaba Cloud DashScope intl (kisti-2608-r7 파일럿 백본). 응답에 비용이 없어 토큰 × 이 단가로 계산한다.
+qwen-plus-2025-12-01:
+    input: 0.4
+    output: 1.2
+
 default:
     input: 0.15
     output: 0.6
