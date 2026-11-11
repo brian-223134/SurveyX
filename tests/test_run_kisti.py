@@ -124,6 +124,19 @@ class RunKistiTest(unittest.TestCase):
         with mock.patch.object(run_kisti.subprocess, "check_output", side_effect=OSError("no network")):
             self.assertIsNone(run_kisti.credits_snapshot("before:x"))
 
+    def test_topics_file_env_overrides_default(self):
+        # r7 파일럿: KISTI_TOPICS_FILE 의 title(게재본 전체 제목)이 --title 로 가야 채점 쪽 find_topic 과 맞는다
+        alt = self.tmp / "csur2026_topics.jsonl"
+        alt.write_text(json.dumps({"title": TITLE + ": A Survey", "slug": SLUG, "domain": "security"}) + "\n",
+                       encoding="utf-8")
+        os.environ["KISTI_TOPICS_FILE"] = str(alt)
+        self.assertEqual(run_kisti.topics_file(), alt)
+        self.assertEqual([t["title"] for t in run_kisti.load_topics()], [TITLE + ": A Survey"])
+        self.assertEqual(run_kisti.resolve_slug(TITLE + ": A Survey"), SLUG)
+        self.assertIsNone(run_kisti.resolve_slug(TITLE))                           # 기본 파일의 짧은 제목은 안 맞는다
+        os.environ.pop("KISTI_TOPICS_FILE")
+        self.assertEqual(run_kisti.topics_file(), run_kisti.TOPICS)
+
     def test_check_env_rejects_non_kisti_source(self):
         with self.assertRaises(SystemExit):
             run_kisti.check_env({"SURVEYX_DATA_SOURCE": "common_corpus"}, allow_source=False)

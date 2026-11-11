@@ -23,8 +23,11 @@ topics.kisti.jsonl 밖의 --title 은 slug 가 없어 정책을 걸 수 없다 �
   $PY scripts/run_kisti.py --view kisti-2608-r4 --title "Instruction Tuning for Large Language Models"
   KISTI_VIEW=kisti-2608-r4 $PY scripts/run_kisti.py --all [--skip-done] [--limit N] [--dry-run]
   nohup env KISTI_VIEW=kisti-2608-r4 $PY scripts/run_kisti.py --all --skip-done > outputs/kisti_batch.log 2>&1 &
+  # kisti-2608-r7 파일럿 (CSUR 2026 게재 GT): topic·분모 파일을 바꾼다 — 실행·채점 모두 이 두 파일을 본다
+  KISTI_VIEW=kisti-2608-r7 KISTI_GT_REFS_FILE=$K/candidates/csur2026_gt_refs.jsonl \
+    KISTI_TOPICS_FILE=$K/candidates/csur2026_topics.jsonl $PY scripts/run_kisti.py --slug llm-watermarking
 
-topic 문자열은 topics.kisti.jsonl 의 title 을 그대로 --title 과 --key_words 양쪽에 준다
+topic 문자열은 topics 파일(KISTI_TOPICS_FILE, 기본 topics.kisti.jsonl)의 title 을 그대로 --title 과 --key_words 양쪽에 준다
 (--key_words 를 비우면 핵심어가 유실된다 — kisti_data/docs/asg/surveyx.md §2).
 """
 
@@ -55,7 +58,8 @@ TOPICS = KISTI_ROOT / "data" / "topics.kisti.jsonl"
 FMT = "%Y-%m-%d %H:%M:%S"
 PROFILE_KEYS = ("SURVEYX_TEMPERATURE", "SURVEYX_MAX_TOKENS", "OPENROUTER_PROVIDER_ONLY")
 # 실행 환경변수가 .env 를 덮는 키 (config.py 의 load_dotenv 는 기존 환경변수를 덮지 않으므로 자식 프로세스에서도 이 값이 이긴다)
-KISTI_ENV_KEYS = ("KISTI_VIEW", "KISTI_TOPIC_ID", "KISTI_TOPIC_POLICY", "KISTI_ADAPTER_DIR", "KISTI_FULLTEXT_LIMIT")
+KISTI_ENV_KEYS = ("KISTI_VIEW", "KISTI_TOPIC_ID", "KISTI_TOPIC_POLICY", "KISTI_ADAPTER_DIR", "KISTI_FULLTEXT_LIMIT",
+                  "KISTI_TOPICS_FILE", "KISTI_GT_REFS_FILE")
 DEFAULT_VIEW = "kisti-2512"          # config.DEFAULT_VIEW 와 같음 — 전환은 결정 대기(AGENT-HANDOFF §0 6번)
 POLICY_VIEW = "kisti-2608-r4"        # 채점 분모 n_gt_refs_cutoff 가 정의된 view (2026-09-30 r4 채택; topic 행의 n_gt_refs_cutoff_view 가 우선)
 
@@ -64,10 +68,17 @@ def slugify(title: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")[:60]
 
 
+def topics_file() -> Path:
+    """collect_run.load_topics 와 같은 규칙: KISTI_TOPICS_FILE 이 있으면 그 파일(r7 파일럿 = csur2026_topics.jsonl).
+    실행(--title 로 넘기는 topic 문자열)과 채점(find_topic 의 제목 매칭)이 같은 파일을 봐야 한다."""
+    return Path(os.environ.get("KISTI_TOPICS_FILE") or TOPICS)
+
+
 def load_topics() -> list[dict]:
-    if not TOPICS.exists():
+    p = topics_file()
+    if not p.exists():
         return []
-    return [json.loads(l) for l in TOPICS.read_text(encoding="utf-8").splitlines() if l.strip()]
+    return [json.loads(l) for l in p.read_text(encoding="utf-8").splitlines() if l.strip()]
 
 
 def resolve_slug(title: str, topics: list[dict] | None = None) -> str | None:
@@ -204,7 +215,7 @@ def run_topic(title: str, dry_run: bool = False, allow_source: bool = False,
         env_masked.pop("KISTI_TOPIC_ID", None)
         log("WARN --no-policy: topic 정책 없이 실행 — 2026-09-14 규약 비교 대상이 아니다 (2026년 문헌이 샐 수 있음)")
     elif slug is None:
-        sys.exit(f"topic 이 {TOPICS.name} 에 없어 정책(KISTI_TOPIC_ID)을 걸 수 없다: {title!r} — "
+        sys.exit(f"topic 이 {topics_file().name} 에 없어 정책(KISTI_TOPIC_ID)을 걸 수 없다: {title!r} — "
                  f"정책 없이 돌리려면 --no-policy 를 명시할 것")
     else:
         policy = check_policy(view, slug, env_masked)
@@ -315,7 +326,7 @@ def main():
     elif args.slug:
         hit = [t["title"] for t in topics if t.get("slug") == args.slug]
         if not hit:
-            sys.exit(f"slug not found in {TOPICS}: {args.slug}")
+            sys.exit(f"slug not found in {topics_file()}: {args.slug}")
         titles = [(hit[0], args.slug)]
     else:
         titles = [(t["title"], t.get("slug")) for t in topics]
