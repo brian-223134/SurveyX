@@ -29,6 +29,7 @@ topics.kisti.jsonl 밖의 --title 은 slug 가 없어 정책을 걸 수 없다 �
 
 topic 문자열은 topics 파일(KISTI_TOPICS_FILE, 기본 topics.kisti.jsonl)의 title 을 그대로 --title 과 --key_words 양쪽에 준다
 (--key_words 를 비우면 핵심어가 유실된다 — kisti_data/docs/asg/surveyx.md §2).
+OpenRouter 크레딧 조회(check_credits.py)는 SURVEYX_REMOTE_URL 이 OpenRouter 일 때만 한다(키를 다른 회사로 보내지 않는다).
 """
 
 from __future__ import annotations
@@ -43,6 +44,7 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import urlparse
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
@@ -79,6 +81,11 @@ def load_topics() -> list[dict]:
     if not p.exists():
         return []
     return [json.loads(l) for l in p.read_text(encoding="utf-8").splitlines() if l.strip()]
+
+
+def is_openrouter(url: str) -> bool:
+    host = (urlparse(url).hostname or "").lower()
+    return host == "openrouter.ai" or host.endswith(".openrouter.ai")
 
 
 def resolve_slug(title: str, topics: list[dict] | None = None) -> str | None:
@@ -241,12 +248,19 @@ def run_topic(title: str, dry_run: bool = False, allow_source: bool = False,
     vsnap = collect_run.view_snapshot(view)
     log(f"view snapshot: version={vsnap.get('version')} papers={vsnap.get('view_papers')} "
         f"manifest={str(vsnap.get('manifest_sha256'))[:8]} exclude_keys={vsnap.get('exclude_keys')}")
-    before = credits_snapshot(f"before:{file_slug}")
+    # check_credits.py 는 OPENROUTER_API_KEY 를 openrouter.ai 로 보낸다. 백본이 OpenRouter 가 아니면(r7 파일럿 = DashScope)
+    # 그 자리에 다른 회사 키가 들어 있으므로 조회하지 않는다 — 비용은 token_monitor(LLM.yaml 단가)로 남는다.
+    remote_url = env_masked.get("SURVEYX_REMOTE_URL") or ""
+    use_credits = not remote_url or is_openrouter(remote_url)
+    if not use_credits:
+        log(f"credits snapshot skipped: backbone {urlparse(remote_url).hostname} is not OpenRouter "
+            f"(cost = token_monitor × src/configs/LLM.yaml)")
+    before = credits_snapshot(f"before:{file_slug}") if use_credits else None
     started = time.time()
     with log_path.open("w", encoding="utf-8") as fw:
         proc = subprocess.run(cmd, cwd=REPO_ROOT, stdout=fw, stderr=subprocess.STDOUT, env=child_env)
     ended = time.time()
-    after = credits_snapshot(f"after:{file_slug}")
+    after = credits_snapshot(f"after:{file_slug}") if use_credits else None
     status = "ok" if proc.returncode == 0 else "failed"
     log(f"full_run.py exited {proc.returncode} ({status}) in {int(ended - started) // 60}m")
 

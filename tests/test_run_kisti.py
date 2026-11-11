@@ -124,6 +124,31 @@ class RunKistiTest(unittest.TestCase):
         with mock.patch.object(run_kisti.subprocess, "check_output", side_effect=OSError("no network")):
             self.assertIsNone(run_kisti.credits_snapshot("before:x"))
 
+    def test_is_openrouter(self):
+        self.assertTrue(run_kisti.is_openrouter("https://openrouter.ai/api/v1/chat/completions"))
+        self.assertFalse(run_kisti.is_openrouter(
+            "https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions"))
+        self.assertFalse(run_kisti.is_openrouter("https://openrouter.ai.evil.example/v1"))
+
+    def test_run_topic_skips_credits_for_non_openrouter_backbone(self):
+        # check_credits.py 는 키를 openrouter.ai 로 보낸다 — DashScope 백본이면 부르지 않는다
+        def fake_full_run(cmd, **kw):
+            self._fake_task("2026-11-11-0300_Visua")
+            return mock.Mock(returncode=0)
+
+        env = {"SURVEYX_DATA_SOURCE": "kisti",
+               "SURVEYX_REMOTE_URL": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions"}
+        with mock.patch.object(collect_run, "parse_dotenv", return_value=env), \
+                mock.patch.object(run_kisti, "check_env", return_value="kisti-2608-r7"), \
+                mock.patch.object(run_kisti, "check_policy", return_value=FAKE_POLICY), \
+                mock.patch.object(run_kisti, "credits_snapshot") as cs, \
+                mock.patch.object(run_kisti.subprocess, "run", side_effect=fake_full_run):
+            run_kisti.run_topic(TITLE)
+        cs.assert_not_called()
+        m = self.outputs / "2026-11-11-0300_Visua" / "metrics"
+        credits = json.loads((m / "credits.json").read_text(encoding="utf-8"))
+        self.assertEqual((credits["before"], credits["after"], credits["measured_usd"]), (None, None, None))
+
     def test_topics_file_env_overrides_default(self):
         # r7 파일럿: KISTI_TOPICS_FILE 의 title(게재본 전체 제목)이 --title 로 가야 채점 쪽 find_topic 과 맞는다
         alt = self.tmp / "csur2026_topics.jsonl"
